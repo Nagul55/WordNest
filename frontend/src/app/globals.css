@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Heavy Jack';
+  src: url('/fonts/heavy-jack.shadow.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Qurova';
+  src: url('/fonts/QurovaDEMO-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Qurova';
+  src: url('/fonts/QurovaDEMO-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Qurova';
+  src: url('/fonts/QurovaDEMO-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Qurova';
+  src: url('/fonts/QurovaDEMO-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Qurova';
+  src: url('/fonts/QurovaDEMO-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-dark: #0B0909;
+  --color-teal-dark: #2E4540;
+  --color-teal: #408175;
+  --color-purple-light: #B5B9F0;
+  --font-sans: 'Qurova', sans-serif;
+  --font-mono: 'Qurova', sans-serif;
+  --font-heavy: 'Heavy Jack', sans-serif;
+}
+
+@layer utilities {
+  .heavy-text-pink {
+    font-family: 'Heavy Jack', sans-serif;
+    color: #ff107a;
+    -webkit-text-stroke: 1.5px #000;
+    text-shadow: 3px 3px 0px #00e5ff;
+  }
+  .heavy-text-yellow {
+    font-family: 'Heavy Jack', sans-serif;
+    color: #ffde00;
+    -webkit-text-stroke: 1.5px #000;
+    text-shadow: 3px 3px 0px #a200ff;
+  }
+  
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
+
+:root {
+  --background: 11 9 9;
+  --foreground: 181 185 240;
+  --card: 46 69 64;
+  --primary: 64 129 117;
+  --accent: 181 185 240;
+}
+
+body {
+  background-color: #0B0909;
+  color: #B5B9F0;
+  font-family: 'Qurova', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom Scrollbar (in case interior containers need scrolling later) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0909;
+}
+::-webkit-scrollbar-thumb {
+  background: #2E4540;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #408175;
+}
+
+/* Solid Panel & Cards (No Gradients!) */
+.glass-panel {
+  background-color: rgba(46, 69, 64, 0.4);
+  border: 1px solid #2E4540;
+}
+
+.glass-panel-hover {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-panel-hover:hover {
+  background-color: rgba(46, 69, 64, 0.7);
+  border-color: #408175;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Card flip transitions */
+.flip-card-inner {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+.flip-card-back {
+  transform: rotateY(180deg);
+}
