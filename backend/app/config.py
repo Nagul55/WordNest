@@ -4,9 +4,8 @@ from dotenv import load_dotenv
 # Load environment variables from .env if present
 load_dotenv()
 
-DEEPSEEK_API_BASE = os.getenv("DEEPSEEK_API_BASE", "https://integrate.api.nvidia.com/v1")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-DEEPSEEK_MODEL_NAME = os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-ai/deepseek-v4-pro")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL_NAME = os.getenv("GROQ_MODEL_NAME", "llama-3.1-8b-instant")
 
 UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY", "")
 UNSPLASH_SECRET_KEY = os.getenv("UNSPLASH_SECRET_KEY", "")

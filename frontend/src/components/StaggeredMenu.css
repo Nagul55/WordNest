@@ -1,0 +1,229 @@
+.staggered-menu-wrapper {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  z-index: 60;
+}
+
+.staggered-menu-header {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  z-index: 75;
+}
+
+.sm-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  color: #0D0D0D;
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: none;
+  transition: color 0.25s, transform 0.15s;
+  overflow: visible;
+  user-select: none;
+}
+
+.sm-toggle:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sm-accent, #4f46e5);
+  box-shadow: none;
+}
+
+.sm-toggle:active {
+  transform: scale(0.95);
+}
+
+.sm-toggle:focus-visible {
+  outline: none;
+}
+
+.sm-toggle-textWrap {
+  position: relative;
+  display: inline-block;
+  height: 1em;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 3.8em;
+  text-align: center;
+}
+
+.sm-toggle-textInner {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.sm-toggle-line {
+  display: block;
+  height: 1em;
+  line-height: 1;
+}
+
+.sm-icon {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+.sm-icon-line {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 2.5px;
+  background: currentColor;
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+
+.sm-panel-itemWrap {
+  position: relative;
+  overflow: hidden;
+  line-height: 1;
+}
+
+.staggered-menu-panel {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: clamp(300px, 36vw, 440px);
+  height: 100vh;
+  background: #FFFFFF;
+  border-right: none;
+  box-shadow: 25px 0 60px rgba(13, 13, 13, 0.2);
+  display: flex;
+  flex-direction: column;
+  padding: 6.5rem 2.25rem 2.25rem 2.25rem;
+  overflow-y: auto;
+  z-index: 65 !important;
+  pointer-events: auto;
+  opacity: 0;
+}
+
+[data-position='right'] .staggered-menu-panel {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: none;
+  box-shadow: -25px 0 60px rgba(13, 13, 13, 0.2);
+}
+
+.sm-prelayers {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: clamp(300px, 36vw, 440px);
+  pointer-events: none;
+  z-index: 60 !important;
+  opacity: 0;
+}
+
+[data-position='right'] .sm-prelayers {
+  left: auto;
+  right: 0;
+}
+
+.sm-prelayer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  transform: translateX(0);
+  opacity: 0;
+}
+
+.sm-panel-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.sm-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sm-panel-item {
+  position: relative;
+  color: #0D0D0D;
+  font-weight: 800;
+  font-size: clamp(1.5rem, 2.3vw, 2.15rem);
+  cursor: pointer;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  text-transform: capitalize;
+  transition: color 0.3s ease, transform 0.3s ease;
+  display: block;
+  text-decoration: none;
+  padding: 0.35rem 0;
+  padding-right: 3em;
+  text-align: left;
+  background: transparent;
+  border: none;
+  width: 100%;
+}
+
+.sm-panel-itemLabel {
+  display: inline-block;
+  will-change: transform;
+  transform-origin: 50% 100%;
+  transition: color 0.3s ease;
+}
+
+.sm-panel-item:hover .sm-panel-itemLabel {
+  color: var(--sm-accent, #4f46e5);
+}
+
+.sm-panel-item.active-item .sm-panel-itemLabel {
+  color: var(--sm-accent, #4f46e5);
+  text-decoration: none;
+}
+
+.sm-panel-itemIndex {
+  font-size: 0.45em;
+  font-weight: 800;
+  color: var(--sm-accent, #4f46e5);
+  margin-left: 0.3rem;
+  vertical-align: super;
+  user-select: none;
+}
+
+.sm-bottom-content {
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .staggered-menu-panel, .sm-prelayers {
+    width: 100vw;
+  }
+  .staggered-menu-panel {
+    padding: 6.5rem 1.75rem 2rem 1.75rem;
+  }
+}

@@ -1,32 +1,31 @@
 import json
 from typing import List, Dict, Any, Optional
-from openai import OpenAI
-from app.config import DEEPSEEK_API_BASE, DEEPSEEK_API_KEY, DEEPSEEK_MODEL_NAME
+from openai import AsyncOpenAI
+from app.config import GROQ_API_KEY, GROQ_MODEL_NAME
 
-# Initialize OpenAI SDK pointing to NVIDIA DeepSeek endpoint
-client = OpenAI(
-    base_url=DEEPSEEK_API_BASE,
-    api_key=DEEPSEEK_API_KEY
+# Initialize AsyncOpenAI SDK pointing to Groq Cloud endpoint
+client = AsyncOpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=GROQ_API_KEY
 )
 
-def _call_deepseek(messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 4096) -> str:
-    """Helper to communicate with DeepSeek V4 Pro using the NVIDIA integration credentials."""
+async def _call_deepseek(messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 4096) -> str:
+    """Helper to communicate with Groq Cloud API asynchronously."""
     try:
-        completion = client.chat.completions.create(
-            model=DEEPSEEK_MODEL_NAME,
+        completion = await client.chat.completions.create(
+            model=GROQ_MODEL_NAME,
             messages=messages,
             temperature=temperature,
             top_p=0.95,
             max_tokens=max_tokens,
-            extra_body={"chat_template_kwargs": {"thinking": False}},
             stream=False
         )
         return completion.choices[0].message.content
     except Exception as e:
-        print(f"[DeepSeek Service Error]: {str(e)}")
+        print(f"[Groq Service Error]: {str(e)}")
         raise e
 
-def generate_magic_notes(raw_content: str) -> Dict[str, Any]:
+async def generate_magic_notes(raw_content: str) -> Dict[str, Any]:
     """
     Analyzes notes, textbook snippets, or articles and transforms them into a full study suite:
     Title, description, summary outline, flashcards deck, and multiple-choice practice test.
@@ -55,7 +54,7 @@ Generate between 5 to 15 high-quality flashcards and at least 4 practice quiz qu
 
     user_prompt = f"Please convert the following content into a complete WordNest study deck:\n\n{raw_content}"
     
-    raw_response = _call_deepseek(
+    raw_response = await _call_deepseek(
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -87,7 +86,7 @@ Generate between 5 to 15 high-quality flashcards and at least 4 practice quiz qu
             "practice_quiz": []
         }
 
-def grade_written_answer(term: str, expected_definition: str, user_response: str) -> Dict[str, Any]:
+async def grade_written_answer(term: str, expected_definition: str, user_response: str) -> Dict[str, Any]:
     """
     Semantic AI grading: Evaluates if a student's written response conceptually matches the answer,
     rather than strict rigid character matching.
@@ -105,7 +104,7 @@ Return ONLY valid JSON without markdown wrapping."""
 
     user_prompt = f"Term: {term}\nExpected Definition: {expected_definition}\nStudent's Answer: {user_response}"
 
-    raw_response = _call_deepseek(
+    raw_response = await _call_deepseek(
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -126,14 +125,14 @@ Return ONLY valid JSON without markdown wrapping."""
             "feedback": "Graded via heuristic fallback."
         }
 
-def chat_socratic_tutor(deck_title: str, cards: List[Dict[str, str]], conversation_history: List[Dict[str, str]]) -> str:
+async def chat_socratic_tutor(deck_title: str, cards: List[Dict[str, str]], conversation_history: List[Dict[str, str]]) -> str:
     """
-    An interactive conversational AI tutor powered by DeepSeek V4 Pro that quizzes the student 
+    An interactive conversational AI tutor powered by Groq Llama that quizzes the student 
     using the Socratic method based on their specific flashcard deck.
     """
     cards_context = "\n".join([f"- {c.get('term', '')}: {c.get('definition', '')}" for c in cards[:25]])
     
-    system_prompt = f"""You are WordNest's friendly, brilliantly witty Socratic AI Tutor powered by DeepSeek V4 Pro.
+    system_prompt = f"""You are WordNest's friendly, brilliantly witty Socratic AI Tutor powered by Groq Llama.
 You are currently helping a student study the deck titled: '{deck_title}'.
 Here are the cards in this study set:
 {cards_context}
@@ -146,4 +145,28 @@ YOUR TUTORING RULES:
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(conversation_history)
 
-    return _call_deepseek(messages=messages, temperature=0.7, max_tokens=1024)
+    return await _call_deepseek(messages=messages, temperature=0.7, max_tokens=1024)
+
+async def generate_word_definition(word: str) -> str:
+    """Generates a simple, clear dictionary definition using Groq Llama model."""
+    system_prompt = (
+        "You are a friendly lexicographer. Provide a simple, clear, child-friendly dictionary definition "
+        "for the given word. Keep the response under 15 words and simple to understand.\n"
+        "Example:\n"
+        "- 'udder' -> 'the part of a female cow, etc. that hangs under its body and produces milk.'\n"
+        "- 'machete' -> 'a broad heavy knife used as a cutting tool and as a weapon.'\n"
+        "Output ONLY the raw definition. Do not write the word. Do not use quotes or intro phrases."
+    )
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Word: {word}"}
+    ]
+    try:
+        response = await _call_deepseek(messages=messages, temperature=0.1, max_tokens=35)
+        # Clean any quotes or leading dashes
+        clean_resp = response.strip().strip('"').strip("'").strip("-").strip()
+        return clean_resp
+    except Exception as e:
+        print(f"[Generate Word Definition Error]: {str(e)}")
+        raise e

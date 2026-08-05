@@ -5,7 +5,7 @@ from app.routers import ai, unsplash
 
 app = FastAPI(
     title="WordNest Backend API",
-    description="Next-Generation AI Study Suite & Quizlet Replica Backend Powered by DeepSeek V4 Pro and FastAPI",
+    description="Next-Generation AI Study Suite & Quizlet Replica Backend Powered by Groq Cloud and FastAPI",
     version="1.0.0"
 )
 
@@ -27,7 +27,7 @@ def health_check():
     return {
         "status": "healthy",
         "service": "WordNest Backend API",
-        "ai_engine": "DeepSeek V4 Pro via NVIDIA NVAPI",
+        "ai_engine": "Groq Cloud Llama 3.1",
         "version": "1.0.0"
     }
 

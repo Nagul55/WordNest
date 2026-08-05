@@ -49,27 +49,56 @@
 }
 
 @theme {
-  --color-dark: #0B0909;
-  --color-teal-dark: #2E4540;
-  --color-teal: #408175;
-  --color-purple-light: #B5B9F0;
-  --font-sans: 'Qurova', sans-serif;
-  --font-mono: 'Qurova', sans-serif;
+  --color-jetblack: #0D0D0D;
+  --color-deeppurple: #433075;
+  --color-lavender: #A58CF4;
+  --color-softwhite: #FAFAFA;
+  --color-slate-dark: #272A3B;
+  --color-slate-light: #736A86;
+  --color-frost-gray: #C8CED6;
+  --font-sans: 'Righteous', 'Qurova', 'Open Sans', sans-serif;
+  --font-mono: 'Open Sans', monospace;
   --font-heavy: 'Heavy Jack', sans-serif;
 }
 
+@font-face {
+  font-family: 'OpenSansDigits';
+  src: url('https://fonts.gstatic.com/s/opensans/v40/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsjZ0C4nyg.woff2') format('woff2');
+  unicode-range: U+30-39; /* Digits 0-9 */
+}
+
 @layer utilities {
+  .righteous-regular {
+    font-family: "Righteous", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+
   .heavy-text-pink {
-    font-family: 'Heavy Jack', sans-serif;
-    color: #ff107a;
-    -webkit-text-stroke: 1.5px #000;
-    text-shadow: 3px 3px 0px #00e5ff;
+    font-family: 'Heavy Jack', sans-serif !important;
+    color: #ff006a !important;
+    text-shadow: 
+      -1px -1px 0 #000,
+       1px -1px 0 #000,
+      -1px  1px 0 #000,
+       1px  1px 0 #000,
+       2px  2px 0 #000,
+       3px  3px 0 #000,
+       4px  4px 0 #00e5ff,
+       5px  5px 0 #00e5ff;
   }
   .heavy-text-yellow {
-    font-family: 'Heavy Jack', sans-serif;
-    color: #ffde00;
-    -webkit-text-stroke: 1.5px #000;
-    text-shadow: 3px 3px 0px #a200ff;
+    font-family: 'Heavy Jack', sans-serif !important;
+    color: #ffde00 !important;
+    text-shadow: 
+      -1px -1px 0 #000,
+       1px -1px 0 #000,
+      -1px  1px 0 #000,
+       1px  1px 0 #000,
+       2px  2px 0 #000,
+       3px  3px 0 #000,
+       4px  4px 0 #00e5ff,
+       5px  5px 0 #00e5ff;
   }
   
   .perspective-1000 {
@@ -87,52 +116,72 @@
 }
 
 :root {
-  --background: 11 9 9;
-  --foreground: 181 185 240;
-  --card: 46 69 64;
-  --primary: 64 129 117;
-  --accent: 181 185 240;
+  --background: 13 13 13;
+  --foreground: 250 250 250;
+  --card: 39 42 59;
+  --primary: 67 48 117;
+  --accent: 165 140 244;
+}
+
+body, input, textarea, select, button {
+  font-family: 'OpenSansDigits', 'Righteous', 'Qurova', 'Open Sans', sans-serif;
 }
 
 body {
-  background-color: #0B0909;
-  color: #B5B9F0;
-  font-family: 'Qurova', sans-serif;
+  background-color: #0D0D0D;
+  color: #FAFAFA;
   overflow: hidden;
   height: 100vh;
   margin: 0;
   padding: 0;
 }
 
-/* Custom Scrollbar (in case interior containers need scrolling later) */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B0909;
+  background: #0D0D0D;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2E4540;
+  background: #272A3B;
+  border: 1px solid #433075;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #408175;
+  background: #A58CF4;
 }
 
-/* Solid Panel & Cards (No Gradients!) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(115, 106, 134, 0.25);
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #433075;
+}
+
+/* Solid Panel & Cards */
 .glass-panel {
-  background-color: rgba(46, 69, 64, 0.4);
-  border: 1px solid #2E4540;
+  background: linear-gradient(135deg, rgba(115, 106, 134, 0.25) 0%, rgba(39, 42, 59, 0.6) 100%);
+  border: 1px solid #736A86;
 }
 
 .glass-panel-hover {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .glass-panel-hover:hover {
-  background-color: rgba(46, 69, 64, 0.7);
-  border-color: #408175;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, rgba(67, 48, 117, 0.6) 0%, rgba(39, 42, 59, 0.8) 100%);
+  border-color: #A58CF4;
+  box-shadow: 0 8px 25px rgba(165, 140, 244, 0.15);
 }
 
 /* Card flip transitions */

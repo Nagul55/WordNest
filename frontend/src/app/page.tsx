@@ -5,6 +5,7 @@ import Image from "next/image";
 import { supabase, syncUserProfile } from "@/lib/supabase";
 import { Lock, Mail, User, AlertCircle, CheckCircle2, ArrowRight, ShieldCheck, LogOut, Loader2, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Dashboard from "@/components/Dashboard";
 
 const WordNestLogoHeader = () => {
   return (
@@ -71,14 +72,17 @@ export default function AuthPortalPage() {
   // Authenticated User Session
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [imgError, setImgError] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Listen to Supabase Auth State on load
   useEffect(() => {
+    let sessionChecked = false;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setActiveSession(session);
         syncUserProfile(session.user);
       }
+      sessionChecked = true;
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -86,10 +90,23 @@ export default function AuthPortalPage() {
       if (session?.user) {
         await syncUserProfile(session.user);
       }
+      sessionChecked = true;
     });
+
+    // Ensure initial splash screen loader displays for at least 1800ms,
+    // and stays visible until the initial session check has completed.
+    const timer = setTimeout(() => {
+      const interval = setInterval(() => {
+        if (sessionChecked) {
+          setIsInitialLoading(false);
+          clearInterval(interval);
+        }
+      }, 50);
+    }, 1800);
 
     return () => {
       authListener.subscription.unsubscribe();
+      clearTimeout(timer);
     };
   }, []);
 
@@ -222,78 +239,35 @@ export default function AuthPortalPage() {
     setSuccessMsg("You have been signed out safely.");
   };
 
-  // ==========================================
-  // IF USER IS ALREADY AUTHENTICATED -> SHOW WELCOME & DATABASE STATUS
-  // ==========================================
-  if (activeSession) {
-    const usr = activeSession.user;
-    const name = usr.user_metadata?.full_name || usr.user_metadata?.name || usr.email?.split("@")[0] || "User";
-    const avatar = usr.user_metadata?.avatar_url || usr.user_metadata?.picture || usr.user_metadata?.avatar || usr.identities?.[0]?.identity_data?.avatar_url || usr.identities?.[0]?.identity_data?.picture;
-
-    return (
-      <div className="h-screen w-full bg-[#0B0909] flex items-center justify-center p-6 relative overflow-hidden">
-        <div className="max-w-xl w-full p-8 sm:p-10 rounded-3xl border border-[#2E4540] bg-[#2E4540]/30 shadow-2xl relative z-10 space-y-8 text-center animate-fadeIn">
-          <div className="flex flex-col items-center justify-center gap-4">
-            <div className="w-20 h-20 rounded-full border-2 border-[#408175] p-1 flex items-center justify-center bg-[#0B0909] shadow-xl overflow-hidden">
-              {avatar && !imgError ? (
-                <img 
-                  src={avatar} 
-                  alt={name} 
-                  referrerPolicy="no-referrer"
-                  onError={() => setImgError(true)}
-                  className="w-full h-full object-cover rounded-full" 
-                />
-              ) : (
-                <span className="text-2xl font-black text-[#B5B9F0]">{name.slice(0, 2).toUpperCase()}</span>
-              )}
-            </div>
-            <div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#408175]/20 border border-[#408175]/40 text-[#B5B9F0] text-xs font-bold uppercase tracking-wider mb-2">
-                <ShieldCheck className="w-4 h-4 text-[#408175]" /> Authenticated via Supabase
-              </span>
-              <h1 className="text-3xl font-black text-white">Welcome back, {name}!</h1>
-              <p className="text-sm text-[#B5B9F0]/80 mt-1">{usr.email}</p>
-            </div>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-[#0B0909] border border-[#2E4540] text-left space-y-3 text-xs text-[#B5B9F0]">
-            <div className="flex items-center justify-between border-b border-[#2E4540] pb-2">
-              <span className="text-[#B5B9F0]/70 font-extrabold uppercase">Database Status</span>
-              <span className="text-[#408175] font-bold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#408175] animate-pulse" /> Connected & Synced
-              </span>
-            </div>
-            <p className="text-[#B5B9F0]/90 leading-relaxed">
-              Your profile records and authentication tokens have been securely registered in the <strong>Supabase Postgres DB (`public.profiles`)</strong> without error.
-            </p>
-          </div>
-
-          <div className="pt-4 border-t border-[#2E4540] flex items-center justify-between">
-            <button
-              onClick={() => alert("Proceeding to WordNest core application tools...")}
-              className="px-6 py-3.5 rounded-2xl bg-[#408175] hover:opacity-90 text-white font-extrabold text-sm shadow-lg transition-all flex items-center gap-2"
-            >
-              <span>Launch Study Portal</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="px-5 py-3 rounded-2xl bg-[#0B0909] border border-[#2E4540] hover:border-[#408175] text-[#B5B9F0] hover:text-white font-bold text-sm transition-all flex items-center gap-2"
-            >
-              <LogOut className="w-4 h-4 text-[#408175]" />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ==========================================
-  // MAIN SPLIT-SCREEN AUTHENTICATION PORTAL (STATIC & NON-SCROLLABLE)
-  // ==========================================
   return (
-    <div className="h-screen w-full flex flex-col md:flex-row bg-[#0B0909] relative overflow-hidden">
+    <>
+      <AnimatePresence mode="wait">
+        {isInitialLoading && (
+          <motion.div
+            key="loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="fixed inset-0 z-[9999] bg-[#0d0d0d] flex items-center justify-center"
+          >
+            <div className="relative w-64 h-64 select-none">
+              <Image
+                src="/loading.svg"
+                alt="Loading WordNest..."
+                fill
+                priority
+                className="object-contain"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!isInitialLoading && (
+        activeSession ? (
+          <Dashboard user={activeSession.user} onSignOut={handleSignOut} />
+        ) : (
+          <div className="h-screen w-full flex flex-col md:flex-row bg-[#0D0D0D] relative overflow-hidden righteous-regular">
       
       {/* Floating 2-second Toast Notifications */}
       <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
@@ -303,7 +277,7 @@ export default function AuthPortalPage() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="px-4 py-3 rounded-2xl bg-[#0B0909]/95 border border-rose-500/60 text-rose-200 text-xs shadow-2xl backdrop-blur-md flex items-center gap-3 max-w-sm pointer-events-auto"
+              className="px-4 py-3 rounded-2xl bg-[#272A3B]/95 border border-rose-500/60 text-rose-200 text-xs shadow-2xl backdrop-blur-md flex items-center gap-3 max-w-sm pointer-events-auto"
             >
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
               <span className="font-semibold">{errorMsg}</span>
@@ -315,9 +289,9 @@ export default function AuthPortalPage() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="px-4 py-3 rounded-2xl bg-[#0B0909]/95 border border-[#408175] text-white text-xs shadow-2xl backdrop-blur-md flex items-center gap-3 max-w-sm pointer-events-auto"
+              className="px-4 py-3 rounded-2xl bg-[#272A3B]/95 border border-[#A58CF4] text-[#FAFAFA] text-xs shadow-2xl backdrop-blur-md flex items-center gap-3 max-w-sm pointer-events-auto"
             >
-              <CheckCircle2 className="w-4 h-4 text-[#408175] shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-[#A58CF4] shrink-0" />
               <span className="font-semibold">{successMsg}</span>
             </motion.div>
           )}
@@ -325,14 +299,14 @@ export default function AuthPortalPage() {
       </div>
 
       {/* LEFT HEMISPHERE (60% WIDTH): FULL-SCREEN COVER ARTWORK */}
-      <div className="hidden md:block md:w-[60%] relative h-full bg-[#0B0909] overflow-hidden">
+      <div className="hidden md:block md:w-[60%] relative h-full bg-[#0D0D0D] overflow-hidden">
         <ImageSlideshow />
         {/* Blending Edge to merge seamlessly into the right side */}
-        <div className="absolute inset-y-0 right-0 w-32 md:w-48 lg:w-64 bg-gradient-to-r from-transparent via-[#0B0909]/80 to-[#0B0909] pointer-events-none z-20 backdrop-blur-[2px] mask-image-linear-gradient" style={{ maskImage: 'linear-gradient(to right, transparent, black)' }} />
+        <div className="absolute inset-y-0 right-0 w-32 md:w-48 lg:w-64 bg-gradient-to-r from-transparent via-[#0D0D0D]/80 to-[#0D0D0D] pointer-events-none z-20 backdrop-blur-[2px] mask-image-linear-gradient" style={{ maskImage: 'linear-gradient(to right, transparent, #0D0D0D)' }} />
       </div>
 
       {/* RIGHT HEMISPHERE (40% WIDTH): AUTHENTICATION CONSOLE */}
-      <div className="w-full md:w-[40%] h-full flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-4 bg-[#0B0909] relative z-10 overflow-hidden">
+      <div className="w-full md:w-[40%] h-full flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-4 bg-[#0D0D0D] relative z-10 overflow-hidden">
         
         <div className="w-full max-w-sm mx-auto flex flex-col justify-center h-full">
           
@@ -341,10 +315,10 @@ export default function AuthPortalPage() {
 
           {/* Form Header */}
           <div className="space-y-1 mb-5">
-            <h2 className="text-xl sm:text-2xl font-black text-white">
+            <h2 className="text-xl sm:text-2xl font-black text-[#FAFAFA] tracking-tight">
               {authMode === "signin" ? "Sign in to your account" : "Create your WordNest account"}
             </h2>
-            <p className="text-xs text-[#B5B9F0]/80 font-semibold">
+            <p className="text-xs text-[#C8CED6] font-normal">
               {authMode === "signin"
                 ? "Welcome back! Please enter your details below."
                 : "Join WordNest and enhance your learning experience."}
@@ -352,14 +326,14 @@ export default function AuthPortalPage() {
           </div>
 
           {/* Tab Switcher (Sign In vs Sign Up) */}
-          <div className="p-1 rounded-xl bg-[#2E4540]/40 border border-[#2E4540] grid grid-cols-2 text-center text-xs font-black mb-4">
+          <div className="p-1 rounded-xl bg-gradient-to-r from-[#272A3B] to-[#272A3B]/80 border border-[#736A86]/60 grid grid-cols-2 text-center text-xs font-black mb-4 shadow-inner">
             <button
               type="button"
               onClick={() => { setAuthMode("signin"); setErrorMsg(null); setSuccessMsg(null); }}
-              className={`py-2 rounded-lg transition-all duration-200 ${
+              className={`py-2 rounded-lg transition-all duration-300 cursor-pointer ${
                 authMode === "signin"
-                  ? "bg-[#408175] text-white shadow-md"
-                  : "text-[#B5B9F0]/70 hover:text-white"
+                  ? "bg-[#433075] text-[#FAFAFA] shadow-md border border-[#A58CF4]/50"
+                  : "text-[#C8CED6] hover:text-[#A58CF4]"
               }`}
             >
               Sign In
@@ -367,10 +341,10 @@ export default function AuthPortalPage() {
             <button
               type="button"
               onClick={() => { setAuthMode("signup"); setErrorMsg(null); setSuccessMsg(null); }}
-              className={`py-2 rounded-lg transition-all duration-200 ${
+              className={`py-2 rounded-lg transition-all duration-300 cursor-pointer ${
                 authMode === "signup"
-                  ? "bg-[#408175] text-white shadow-md"
-                  : "text-[#B5B9F0]/70 hover:text-white"
+                  ? "bg-[#433075] text-[#FAFAFA] shadow-md border border-[#A58CF4]/50"
+                  : "text-[#C8CED6] hover:text-[#A58CF4]"
               }`}
             >
               Sign Up
@@ -381,26 +355,25 @@ export default function AuthPortalPage() {
           <form onSubmit={handleEmailAuthSubmit} className="space-y-3">
             {authMode === "signup" && (
               <div className="space-y-1">
-                <label className="text-xs font-bold text-[#B5B9F0]">Full Name</label>
+                <label className="text-xs font-bold text-[#FAFAFA]">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-3 w-4 h-4 text-[#B5B9F0]/60 pointer-events-none" />
+                  <User className="absolute left-3.5 top-3 w-4 h-4 text-[#A58CF4] pointer-events-none" />
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your name"
                     disabled={isLoading}
-                    style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0B0909] border border-[#2E4540] hover:border-[#408175] focus:border-[#408175] focus:outline-none text-xs text-white placeholder-[#B5B9F0]/40 transition-all font-medium"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#272A3B]/40 border border-[#736A86] hover:border-[#A58CF4] focus:border-[#A58CF4] focus:outline-none focus:ring-1 focus:ring-[#A58CF4] text-xs text-[#FAFAFA] placeholder-[#C8CED6]/50 transition-all font-semibold"
                   />
                 </div>
               </div>
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-[#B5B9F0]">Email Address</label>
+              <label className="text-xs font-bold text-[#FAFAFA]">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-3 w-4 h-4 text-[#B5B9F0]/60 pointer-events-none" />
+                <Mail className="absolute left-3.5 top-3 w-4 h-4 text-[#A58CF4] pointer-events-none" />
                 <input
                   type="email"
                   value={email}
@@ -408,27 +381,26 @@ export default function AuthPortalPage() {
                   placeholder="name@example.com"
                   required
                   disabled={isLoading}
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0B0909] border border-[#2E4540] hover:border-[#408175] focus:border-[#408175] focus:outline-none text-xs text-white placeholder-[#B5B9F0]/40 transition-all font-medium"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#272A3B]/40 border border-[#736A86] hover:border-[#A58CF4] focus:border-[#A58CF4] focus:outline-none focus:ring-1 focus:ring-[#A58CF4] text-xs text-[#FAFAFA] placeholder-[#C8CED6]/50 transition-all font-semibold"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-[#B5B9F0]">Password</label>
+                <label className="text-xs font-bold text-[#FAFAFA]">Password</label>
                 {authMode === "signin" && (
                   <button
                     type="button"
                     onClick={() => alert("Password recovery instruction: Contact administration or reset via Supabase email OTP link.")}
-                    className="text-[11px] text-[#408175] hover:underline font-semibold"
+                    className="text-[11px] text-[#A58CF4] hover:underline font-bold cursor-pointer"
                   >
                     Forgot Password?
                   </button>
                 )}
               </div>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-[#B5B9F0]/60 pointer-events-none" />
+                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-[#A58CF4] pointer-events-none" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -436,16 +408,15 @@ export default function AuthPortalPage() {
                   placeholder={authMode === "signup" ? "Create password (min 6 chars)" : "Enter your password"}
                   required
                   disabled={isLoading}
-                  style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#0B0909] border border-[#2E4540] hover:border-[#408175] focus:border-[#408175] focus:outline-none text-xs text-white placeholder-[#B5B9F0]/40 transition-all font-medium"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#272A3B]/40 border border-[#736A86] hover:border-[#A58CF4] focus:border-[#A58CF4] focus:outline-none focus:ring-1 focus:ring-[#A58CF4] text-xs text-[#FAFAFA] placeholder-[#C8CED6]/50 transition-all font-semibold"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3 text-[#B5B9F0]/60 hover:text-white transition-colors"
+                  className="absolute right-3.5 top-3 text-[#C8CED6] hover:text-[#A58CF4] transition-colors cursor-pointer"
                   title={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <Eye className="w-4 h-4 text-[#408175]" /> : <EyeOff className="w-4 h-4" />}
+                  {showPassword ? <Eye className="w-4 h-4 text-[#A58CF4]" /> : <EyeOff className="w-4 h-4 text-[#736A86]" />}
                 </button>
               </div>
             </div>
@@ -458,9 +429,9 @@ export default function AuthPortalPage() {
                   id="remember"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-[#2E4540] bg-[#0B0909] text-[#408175] focus:ring-[#408175]"
+                  className="w-4 h-4 rounded border-[#736A86] bg-[#272A3B] text-[#433075] focus:ring-[#A58CF4]"
                 />
-                <label htmlFor="remember" className="text-xs font-semibold text-[#B5B9F0]/80 cursor-pointer select-none">
+                <label htmlFor="remember" className="text-xs font-semibold text-[#C8CED6] cursor-pointer select-none">
                   Remember me
                 </label>
               </div>
@@ -469,11 +440,11 @@ export default function AuthPortalPage() {
             <button
               type="submit"
               disabled={isLoading || isOAuthLoading}
-              className="w-full py-3 rounded-xl bg-[#408175] hover:opacity-90 text-white font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-1 active:scale-98"
+              className="w-full py-3 rounded-xl bg-[#433075] hover:bg-[#A58CF4] text-[#FAFAFA] hover:text-[#0D0D0D] font-black text-xs shadow-lg shadow-[#433075]/40 hover:shadow-[#A58CF4]/30 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 mt-1 active:scale-95 cursor-pointer border border-[#A58CF4]/30 hover:border-[#0D0D0D]/20"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <Loader2 className="w-4 h-4 animate-spin text-current" />
                   <span>{authMode === "signin" ? "Authenticating..." : "Registering Account..."}</span>
                 </>
               ) : (
@@ -487,14 +458,14 @@ export default function AuthPortalPage() {
 
           {/* Divider BELOW Sign In button */}
           <div className="relative flex py-4 items-center">
-            <div className="flex-grow border-t border-[#2E4540]"></div>
-            <span className="flex-shrink mx-4 text-[#B5B9F0]/60 text-[10px] font-bold uppercase tracking-widest">
+            <div className="flex-grow border-t border-[#736A86]/50"></div>
+            <span className="flex-shrink mx-4 text-[#C8CED6]/70 text-[10px] font-bold uppercase tracking-widest">
               Or {authMode === "signin" ? "sign in" : "register"} with
             </span>
-            <div className="flex-grow border-t border-[#2E4540]"></div>
+            <div className="flex-grow border-t border-[#736A86]/50"></div>
           </div>
 
-          {/* OTHER SIGN-IN OPTIONS (BELOW SUBMIT BUTTON, ROUNDED CIRCLE WITH GOOGLE LOGO ONLY) */}
+          {/* OTHER SIGN-IN OPTIONS */}
           <div className="flex justify-center items-center">
             <button
               type="button"
@@ -502,10 +473,10 @@ export default function AuthPortalPage() {
               disabled={isOAuthLoading || isLoading}
               title="Continue with Google"
               aria-label="Continue with Google"
-              className="w-12 h-12 rounded-full bg-[#2E4540] hover:bg-[#408175] text-white flex items-center justify-center transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 active:scale-95 group border border-[#408175]/40"
+              className="w-12 h-12 rounded-full bg-[#272A3B] hover:bg-[#A58CF4] text-[#FAFAFA] flex items-center justify-center transition-all duration-300 shadow-md hover:shadow-xl disabled:opacity-50 active:scale-95 group border border-[#736A86] hover:border-[#0D0D0D] cursor-pointer"
             >
               {isOAuthLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-white" />
+                <Loader2 className="w-5 h-5 animate-spin text-current" />
               ) : (
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z" />
@@ -518,12 +489,15 @@ export default function AuthPortalPage() {
           </div>
 
           {/* Footer Terms Note */}
-          <p className="text-[11px] text-center text-[#B5B9F0]/60 leading-relaxed mt-5">
-            By accessing WordNest, you agree to our <a href="#" className="underline text-[#B5B9F0] hover:text-white">Terms of Service</a> and <a href="#" className="underline text-[#B5B9F0] hover:text-white">Privacy Policy</a>.
+          <p className="text-[11px] text-center text-[#C8CED6]/70 leading-relaxed mt-5">
+            By accessing WordNest, you agree to our <a href="#" className="underline text-[#C8CED6] hover:text-[#A58CF4]">Terms of Service</a> and <a href="#" className="underline text-[#C8CED6] hover:text-[#A58CF4]">Privacy Policy</a>.
           </p>
 
         </div>
       </div>
     </div>
+        )
+      )}
+    </>
   );
 }

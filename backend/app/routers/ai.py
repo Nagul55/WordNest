@@ -20,16 +20,16 @@ class TutorChatRequest(BaseModel):
     messages: List[Dict[str, str]]
 
 @router.post("/magic-notes")
-def generate_study_notes(payload: MagicNotesRequest):
+async def generate_study_notes(payload: MagicNotesRequest):
     if not payload.content or len(payload.content.strip()) < 10:
         raise HTTPException(status_code=400, detail="Please provide more study material to generate a study set.")
     
-    result = generate_magic_notes(payload.content)
+    result = await generate_magic_notes(payload.content)
     return {"status": "success", "data": result}
 
 @router.post("/grade")
-def grade_answer(payload: GradeAnswerRequest):
-    result = grade_written_answer(
+async def grade_answer(payload: GradeAnswerRequest):
+    result = await grade_written_answer(
         term=payload.term,
         expected_definition=payload.expected_definition,
         user_response=payload.user_response
@@ -37,10 +37,25 @@ def grade_answer(payload: GradeAnswerRequest):
     return {"status": "success", "data": result}
 
 @router.post("/tutor")
-def tutor_chat(payload: TutorChatRequest):
-    response = chat_socratic_tutor(
+async def tutor_chat(payload: TutorChatRequest):
+    response = await chat_socratic_tutor(
         deck_title=payload.deck_title,
         cards=payload.cards,
         conversation_history=payload.messages
     )
     return {"status": "success", "response": response}
+
+class WordDefinitionRequest(BaseModel):
+    word: str
+
+@router.post("/definition")
+async def get_word_definition(payload: WordDefinitionRequest):
+    if not payload.word or len(payload.word.strip()) == 0:
+        raise HTTPException(status_code=400, detail="Please provide a vocabulary term.")
+    
+    from app.services.deepseek_service import generate_word_definition
+    try:
+        definition = await generate_word_definition(payload.word)
+        return {"status": "success", "definition": definition}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
