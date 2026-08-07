@@ -19,34 +19,116 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { supabase } from "@/lib/supabase";
+
 interface OverviewProps {
   userName: string;
+  user?: any;
   onNavigate: (section: string) => void;
 }
 
-export default function OverviewSection({ userName, onNavigate }: OverviewProps) {
+export default function OverviewSection({ userName, user, onNavigate }: OverviewProps) {
   const [activeChallenge, setActiveChallenge] = useState<number>(1);
+  const [metrics, setMetrics] = useState({
+    vocabCount: 0,
+    decksCount: 0,
+    aiQueries: 0,
+    sessionsCount: 0,
+    dueCards: 0,
+    streak: 0
+  });
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user?.id) return;
+      try {
+        // Fetch Metrics
+        const [{ count: vocabCount }, { count: decksCount }, { count: aiCount }, { count: sessionCount }, { count: flashcardsCount }] = await Promise.all([
+          supabase.from("vocabulary_vault").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("study_sets").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("ai_logs").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("practice_sessions").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("flashcards").select("*", { count: "exact", head: true }) // Simplified due cards
+        ]);
+
+        // Calculate unique days for streak
+        let streak = 0;
+        if (sessionCount) {
+          const { data: sessionDates } = await supabase.from("practice_sessions").select("created_at").eq("user_id", user.id);
+          if (sessionDates) {
+            const uniqueDays = new Set(sessionDates.map(s => new Date(s.created_at).toDateString()));
+            streak = uniqueDays.size;
+          }
+        }
+
+        setMetrics({
+          vocabCount: vocabCount || 0,
+          decksCount: decksCount || 0,
+          aiQueries: aiCount || 0,
+          sessionsCount: sessionCount || 0,
+          dueCards: flashcardsCount || 0,
+          streak: streak
+        });
+
+        // Fetch Recent Activities
+        const [practiceRes, aiRes] = await Promise.all([
+          supabase.from("practice_sessions").select("mode, xp_earned, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
+          supabase.from("ai_logs").select("log_type, query_term, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3)
+        ]);
+        
+        let activities: any[] = [];
+        if (practiceRes.data) {
+          activities = activities.concat(practiceRes.data.map(p => ({
+            type: 'practice',
+            time: new Date(p.created_at),
+            title: `Completed ${p.mode} practice session`,
+            category: "Practice Arena",
+            xp: `+${p.xp_earned} XP`,
+            icon: Layers
+          })));
+        }
+        if (aiRes.data) {
+          activities = activities.concat(aiRes.data.map(a => ({
+            type: 'ai',
+            time: new Date(a.created_at),
+            title: `Generated ${a.log_type} for '${a.query_term}'`,
+            category: "AI Study Lab",
+            xp: "+10 XP",
+            icon: Sparkles
+          })));
+        }
+        
+        activities.sort((a, b) => b.time.getTime() - a.time.getTime());
+        setRecentActivities(activities.slice(0, 4));
+        
+      } catch (e) {
+        console.error("Error fetching overview data:", e);
+      }
+    };
+    fetchDashboardData();
+  }, [user]);
 
   const quickLaunchers = [
     {
       id: "vocabulary",
       title: "AI Lexicon Vault",
-      subtitle: "Explore 1,240 advanced TOEFL & GRE lexical terms with contextual examples.",
+      subtitle: "Explore advanced vocabulary lexical terms with contextual examples.",
       icon: BookOpen,
-      badge: "6 New Today",
+      badge: `${metrics.vocabCount} Terms`,
       actionText: "Open Vault",
       section: "vocabulary",
-      progress: 74,
+      progress: Math.min(100, Math.max(10, metrics.vocabCount * 5)),
     },
     {
       id: "flashcards",
       title: "3D Smart Flashcards",
       subtitle: "Spaced-repetition card decks tailored to your memory retention curves.",
       icon: Layers,
-      badge: "Due: 18 Cards",
+      badge: `Due: ${metrics.dueCards} Cards`,
       actionText: "Start Session",
       section: "flashcards",
-      progress: 45,
+      progress: Math.min(100, Math.max(10, metrics.sessionsCount * 2)),
     },
     {
       id: "ailabs",
@@ -56,40 +138,21 @@ export default function OverviewSection({ userName, onNavigate }: OverviewProps)
       badge: "GPT-Powered",
       actionText: "Launch AI Lab",
       section: "ailabs",
-      progress: 92,
+      progress: Math.min(100, Math.max(10, metrics.aiQueries * 5)),
     },
   ];
 
-  const recentActivities = [
-    {
-      time: "2 hours ago",
-      title: "Mastered 'Perspicacious' & 12 related academic adjectives",
-      category: "Vocabulary Hub",
-      xp: "+45 XP",
-      icon: BookOpen,
-    },
-    {
-      time: "Yesterday",
-      title: "Completed Spaced Review: Advanced Business Rhetoric (Deck 3)",
-      category: "Flashcard Arena",
-      xp: "+120 XP",
-      icon: Layers,
-    },
-    {
-      time: "2 days ago",
-      title: "Generated Socratic conceptual breakdown for 'Epistemology'",
-      category: "AI Study Lab",
-      xp: "+80 XP",
-      icon: Sparkles,
-    },
-    {
-      time: "3 days ago",
-      title: "Achieved 14-Day Consecutive Study Streak milestone!",
-      category: "Milestone Attained",
-      xp: "+250 XP",
-      icon: Flame,
-    },
-  ];
+  const formatRelativeTime = (date: Date) => {
+    const diff = Date.now() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days === 1) return "Yesterday";
+    return `${days} days ago`;
+  };
 
   return (
     <div className="space-y-8 pb-12 animate-fadeIn righteous-regular text-[#0D0D0D]">
@@ -106,7 +169,7 @@ export default function OverviewSection({ userName, onNavigate }: OverviewProps)
             Welcome back, <span className="text-[#A58CF4] underline decoration-white/40">{userName}</span>!
           </h1>
           <p className="text-xs sm:text-sm text-[#F7F7F7] leading-relaxed font-normal">
-            Your personalized neural study engine is ready. You have <strong>18 flashcards</strong> lined up for optimal retention today and a hot <strong>14-day study streak</strong> to defend. Let's elevate your knowledge!
+            Your personalized neural study engine is ready. You have <strong>{metrics.dueCards} flashcards</strong> lined up for optimal retention today and a <strong>{metrics.streak}-day study streak</strong> to defend. Let's elevate your knowledge!
           </p>
           <div className="pt-2 flex flex-wrap items-center gap-3">
             <button
@@ -127,17 +190,13 @@ export default function OverviewSection({ userName, onNavigate }: OverviewProps)
         </div>
 
         {/* Floating Streak Badge on Right */}
-        <div className="mt-6 md:mt-0 md:absolute md:right-8 md:top-1/2 md:-translate-y-1/2 flex items-center gap-4 p-5 rounded-3xl bg-white text-[#0D0D0D] border-2 border-[#433075] shadow-2xl">
-          <div className="w-12 h-12 rounded-2xl bg-[#433075] border border-[#A58CF4] flex items-center justify-center text-[#FAFAFA] font-extrabold text-xl shadow-inner">
-            <Flame className="w-7 h-7 fill-[#A58CF4] text-[#A58CF4] animate-bounce" />
+        <div className="absolute top-1/2 -translate-y-1/2 right-8 hidden lg:flex items-center gap-4 bg-black/40 backdrop-blur-xl border border-white/20 p-5 rounded-[28px] shadow-2xl">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center shadow-inner">
+            <Flame className="w-7 h-7 text-white" />
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider font-extrabold text-[#736A86]">Current Streak</div>
-            <div className="text-2xl font-black text-[#0D0D0D]">14 Days</div>
-            <div className="text-[11px] text-[#433075] font-bold flex items-center gap-1">
-              <span>Top 5% Learner</span>
-              <TrendingUp className="w-3 h-3" />
-            </div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-orange-200">Neural Streak</div>
+            <div className="text-3xl font-black text-white">{metrics.streak} <span className="text-base font-bold text-orange-200">Days</span></div>
           </div>
         </div>
       </div>
@@ -145,10 +204,10 @@ export default function OverviewSection({ userName, onNavigate }: OverviewProps)
       {/* METRIC DASHBOARD GRID */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
-          { label: "Vocabulary Mastery", value: "88%", sub: "+4% from last week", icon: BookOpen },
-          { label: "Active Flashcard Decks", value: "12", sub: "340 total mastered", icon: Layers },
-          { label: "AI Socratic Queries", value: "48", sub: "1,420 tokens processed", icon: Sparkles },
-          { label: "Total Study Hours", value: "34.5", sub: "Average 2.2 hrs/day", icon: Clock },
+          { label: "Vocabulary Terms", value: metrics.vocabCount.toString(), sub: "In Lexicon Vault", icon: BookOpen },
+          { label: "Active Flashcard Decks", value: metrics.decksCount.toString(), sub: "Total Decks Created", icon: Layers },
+          { label: "AI Socratic Queries", value: metrics.aiQueries.toString(), sub: "Insights generated", icon: Sparkles },
+          { label: "Practice Sessions", value: metrics.sessionsCount.toString(), sub: "Total completed", icon: Clock },
         ].map((stat, idx) => {
           const IconComponent = stat.icon;
           return (
@@ -315,7 +374,9 @@ export default function OverviewSection({ userName, onNavigate }: OverviewProps)
             </div>
 
             <div className="space-y-4 relative before:absolute before:left-[19px] before:top-3 before:bottom-3 before:w-0.5 before:bg-[#C8CED6]">
-              {recentActivities.map((act, i) => {
+              {recentActivities.length === 0 ? (
+                <div className="p-8 text-center text-xs text-[#736A86]">No recent activity found. Start studying to see your logs!</div>
+              ) : recentActivities.map((act, i) => {
                 const Icon = act.icon;
                 return (
                   <div key={i} className="relative flex items-start gap-4 pl-1 group">
@@ -328,7 +389,7 @@ export default function OverviewSection({ userName, onNavigate }: OverviewProps)
                           <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-[#433075] text-[#FAFAFA]">
                             {act.category}
                           </span>
-                          <span className="text-[11px] font-bold text-[#736A86] group-hover:text-[#C8CED6]">{act.time}</span>
+                          <span className="text-[11px] font-bold text-[#736A86] group-hover:text-[#C8CED6]">{formatRelativeTime(act.time)}</span>
                         </div>
                         <p className="text-xs font-black text-[#0D0D0D] group-hover:text-[#FAFAFA] transition-colors">
                           {act.title}

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -16,16 +16,103 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function AnalyticsSection() {
-  const weeklyActivity = [
-    { day: "Mon", words: 24, xp: 210, percentage: 80 },
-    { day: "Tue", words: 18, xp: 160, percentage: 65 },
-    { day: "Wed", words: 32, xp: 340, percentage: 100 },
-    { day: "Thu", words: 28, xp: 280, percentage: 90 },
-    { day: "Fri", words: 20, xp: 190, percentage: 70 },
-    { day: "Sat", words: 35, xp: 380, percentage: 100 },
-    { day: "Sun", words: 15, xp: 140, percentage: 55 },
-  ];
+import { supabase } from "@/lib/supabase";
+
+export default function AnalyticsSection({ user }: { user?: any }) {
+  const [stats, setStats] = useState({
+    totalXp: 0,
+    totalTime: 0,
+    streak: 0,
+    masteredCount: 0,
+    learningCount: 0,
+    reviewCount: 0,
+    totalVocab: 0
+  });
+
+  const [weeklyActivity, setWeeklyActivity] = useState([
+    { day: "Mon", words: 0, xp: 0, percentage: 0 },
+    { day: "Tue", words: 0, xp: 0, percentage: 0 },
+    { day: "Wed", words: 0, xp: 0, percentage: 0 },
+    { day: "Thu", words: 0, xp: 0, percentage: 0 },
+    { day: "Fri", words: 0, xp: 0, percentage: 0 },
+    { day: "Sat", words: 0, xp: 0, percentage: 0 },
+    { day: "Sun", words: 0, xp: 0, percentage: 0 },
+  ]);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!user?.id) return;
+      try {
+        // Fetch practice sessions
+        const { data: sessions } = await supabase
+          .from("practice_sessions")
+          .select("xp_earned, created_at")
+          .eq("user_id", user.id);
+
+        let totalXp = 0;
+        let totalTime = 0;
+        const weekData = [0, 0, 0, 0, 0, 0, 0]; // Mon-Sun
+        const weekWords = [0, 0, 0, 0, 0, 0, 0];
+
+        if (sessions) {
+          totalTime = sessions.length * 2.5; // Approx 2.5 mins per session
+          sessions.forEach(s => {
+            totalXp += s.xp_earned || 0;
+            const date = new Date(s.created_at);
+            // JS getDay() is 0=Sun, 1=Mon. We want 0=Mon ... 6=Sun
+            const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+            weekData[dayIndex] += s.xp_earned || 0;
+            weekWords[dayIndex] += 5; // Approx 5 words per session
+          });
+        }
+
+        const maxXp = Math.max(...weekData, 100);
+        const mappedWeekly = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => ({
+          day,
+          words: weekWords[i],
+          xp: weekData[i],
+          percentage: (weekData[i] / maxXp) * 100
+        }));
+
+        setWeeklyActivity(mappedWeekly);
+
+        // Fetch vocabulary stats
+        const { data: vocab } = await supabase
+          .from("vocabulary_vault")
+          .select("status")
+          .eq("user_id", user.id);
+
+        let mastered = 0, learning = 0, review = 0, total = 0;
+        if (vocab) {
+          total = vocab.length;
+          vocab.forEach(v => {
+            if (v.status === "Mastered") mastered++;
+            else if (v.status === "Learning") learning++;
+            else review++;
+          });
+        }
+
+        setStats({
+          totalXp,
+          totalTime,
+          streak: total > 0 ? 1 : 0, // placeholder streak logic
+          masteredCount: mastered,
+          learningCount: learning,
+          reviewCount: review,
+          totalVocab: total
+        });
+
+      } catch (err) {
+        console.error("Error fetching analytics:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, [user]);
+
 
   const badges = [
     {
@@ -51,12 +138,16 @@ export default function AnalyticsSection() {
     },
     {
       title: "Polyglot Prodigy",
-      desc: "Achieve 95% retention score across all combined TOEFL & GRE decks.",
+      desc: "Achieve 95% retention score across all combined study decks.",
       icon: Target,
-      unlocked: false,
-      date: "In Progress (88%)",
+      unlocked: stats.totalVocab > 0 && (stats.masteredCount / stats.totalVocab) > 0.9,
+      date: "In Progress",
     },
   ];
+
+  if (isLoading) {
+    return <div className="p-12 text-center animate-pulse">Calculating Neural Synaptic Data...</div>;
+  }
 
   return (
     <div className="space-y-8 pb-12 animate-fadeIn righteous-regular max-w-6xl mx-auto text-[#0D0D0D]">
@@ -88,10 +179,10 @@ export default function AnalyticsSection() {
       {/* TOP SUMMARY STAT CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
-          { label: "Total Vocabulary XP", value: "8,420 XP", sub: "+640 this week", icon: Zap },
-          { label: "Current Study Streak", value: "14 Days", sub: "Personal record!", icon: Flame },
-          { label: "Spaced Retention Rate", value: "94.2%", sub: "Above global target", icon: TrendingUp },
-          { label: "Total Dedicated Time", value: "34.5 Hrs", sub: "Avg 48 mins / day", icon: Clock },
+          { label: "Total Vocabulary XP", value: `${stats.totalXp} XP`, sub: "Earned from practice", icon: Zap },
+          { label: "Current Study Streak", value: `${stats.streak} Days`, sub: "Active learning", icon: Flame },
+          { label: "Spaced Retention Rate", value: stats.totalVocab ? `${Math.round((stats.masteredCount / stats.totalVocab) * 100)}%` : "0%", sub: "Words Mastered", icon: TrendingUp },
+          { label: "Total Dedicated Time", value: `${Math.round(stats.totalTime / 60)} Hrs`, sub: `(${Math.round(stats.totalTime)} mins total)`, icon: Clock },
         ].map((stat, idx) => {
           const IconComponent = stat.icon;
           return (
@@ -159,9 +250,8 @@ export default function AnalyticsSection() {
 
           <div className="mt-6 pt-2 flex flex-wrap items-center justify-between text-xs text-[#736A86] font-semibold">
             <span className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#433075]" /> Daily Average: <strong className="text-[#0D0D0D]">25 Words</strong>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#433075]" /> Weekly Total: <strong className="text-[#0D0D0D]">{stats.totalXp} XP</strong>
             </span>
-            <span>Peak Day: <strong className="text-[#433075]">Saturday (35 Words)</strong></span>
           </div>
         </div>
 
@@ -176,9 +266,9 @@ export default function AnalyticsSection() {
 
             <div className="mt-6 space-y-4">
               {[
-                { label: "Mastered (Permanent)", pct: 68, color: "bg-[#433075]", count: "842 Terms" },
-                { label: "In Spaced Consolidation", pct: 22, color: "bg-[#A58CF4]", count: "272 Terms" },
-                { label: "New Unseen Lexicon", pct: 10, color: "bg-[#C8CED6]", count: "126 Terms" },
+                { label: "Mastered (Permanent)", pct: stats.totalVocab ? Math.round((stats.masteredCount / stats.totalVocab) * 100) : 0, color: "bg-[#433075]", count: `${stats.masteredCount} Terms` },
+                { label: "In Spaced Consolidation", pct: stats.totalVocab ? Math.round((stats.reviewCount / stats.totalVocab) * 100) : 0, color: "bg-[#A58CF4]", count: `${stats.reviewCount} Terms` },
+                { label: "New Unseen Lexicon", pct: stats.totalVocab ? Math.round((stats.learningCount / stats.totalVocab) * 100) : 0, color: "bg-[#C8CED6]", count: `${stats.learningCount} Terms` },
               ].map((row, idx) => (
                 <div key={idx} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-bold">

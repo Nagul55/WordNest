@@ -3,7 +3,14 @@
 import React, { useState, useRef } from "react";
 import Image from "next/image";
 import { 
-  Flame
+  Flame,
+  Bell,
+  CheckCircle2,
+  Info,
+  Sparkles,
+  AlertTriangle,
+  X,
+  Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,6 +22,7 @@ import AILabsSection from "./dashboard/AILabsSection";
 import AnalyticsSection from "./dashboard/AnalyticsSection";
 import SettingsSection from "./dashboard/SettingsSection";
 import DecksSection from "./dashboard/DecksSection";
+import PracticeSection from "./dashboard/PracticeSection";
 import StaggeredMenu from "./StaggeredMenu";
 
 interface DashboardProps {
@@ -24,7 +32,128 @@ interface DashboardProps {
 
 type NavSection = "home" | "decks" | "practice" | "progress" | "settings";
 
+interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: "success" | "info" | "warning" | "error" | "update";
+  timestamp: Date;
+  read: boolean;
+}
+
 export default function Dashboard({ user, onSignOut }: DashboardProps) {
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [bellWiggle, setBellWiggle] = useState(false);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const playChimeSound = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      
+      const playNote = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, start);
+        
+        gain.gain.setValueAtTime(0.15, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+      
+      const now = ctx.currentTime;
+      playNote(523.25, now, 0.35); // C5
+      playNote(659.25, now + 0.1, 0.45); // E5
+    } catch (err) {
+      console.warn("Audio Context alert sound bypass:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleClearAll = () => {
+    setNotifications([]);
+  };
+
+  const handleRemoveNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const formatRelativeTime = (date: Date) => {
+    const diff = Date.now() - date.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (seconds < 60) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
+
+  // Set up global notify function on window
+  React.useEffect(() => {
+    const handleNewNotification = (e: Event) => {
+      const customEvent = e as CustomEvent<{ title: string; message: string; type: NotificationItem['type'] }>;
+      if (!customEvent.detail) return;
+      const { title, message, type } = customEvent.detail;
+      
+      const newNotif: NotificationItem = {
+        id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title,
+        message,
+        type: type || "info",
+        timestamp: new Date(),
+        read: false
+      };
+      
+      setNotifications(prev => [newNotif, ...prev]);
+      
+      // Trigger wiggle animation on the bell icon
+      setBellWiggle(true);
+      setTimeout(() => setBellWiggle(false), 800);
+      
+      // Play chime alert
+      playChimeSound();
+    };
+
+    window.addEventListener("wordnest-notification" as any, handleNewNotification);
+    
+    // Bind to window object for ease of global calling
+    (window as any).wordnestNotify = (title: string, message: string, type?: NotificationItem['type']) => {
+      window.dispatchEvent(new CustomEvent("wordnest-notification", {
+        detail: { title, message, type: type || "info" }
+      }));
+    };
+
+    // Push initial welcome notification
+    const welcomeTimer = setTimeout(() => {
+      (window as any).wordnestNotify?.(
+        "Welcome to WordNest!",
+        "Your offline spaced-repetition dictionary is active and ready.",
+        "update"
+      );
+    }, 1500);
+
+    return () => {
+      window.removeEventListener("wordnest-notification" as any, handleNewNotification);
+      delete (window as any).wordnestNotify;
+      clearTimeout(welcomeTimer);
+    };
+  }, []);
+
   const [activeTab, setActiveTab] = useState<NavSection>("home");
   const [practiceSubTab, setPracticeSubTab] = useState<"vocabulary" | "ailabs" | "flashcards">("vocabulary");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -87,8 +216,8 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   }, []);
 
   // Derive display names safely from Supabase user object or defaults
-  const userEmail = user?.email || "nagulaadhi08@gmail.com";
-  const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split("@")[0] || "Nagul";
+  const userEmail = user?.email || "";
+  const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || (userEmail ? userEmail.split("@")[0] : "") || "Scholar";
 
   // Menu items list
   const menuItems = [
@@ -130,6 +259,163 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
 
           {/* RIGHT: Staggered Menu Toggle */}
           <div className="flex items-center gap-4">
+            {/* Custom keyframes style inject */}
+            <style>{`
+              @keyframes wiggle {
+                0% { transform: rotate(0); }
+                15% { transform: rotate(15deg); }
+                30% { transform: rotate(-15deg); }
+                45% { transform: rotate(10deg); }
+                60% { transform: rotate(-10deg); }
+                75% { transform: rotate(5deg); }
+                85% { transform: rotate(-5deg); }
+                100% { transform: rotate(0); }
+              }
+              .animate-wiggle {
+                animation: wiggle 0.8s ease-in-out;
+              }
+            `}</style>
+
+            {/* Notification Bell & Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`p-2.5 rounded-xl border border-[#C8CED6] bg-white hover:bg-[#F7F7F7] text-[#0D0D0D] transition-all cursor-pointer relative active:scale-95 shadow-sm flex items-center justify-center ${
+                  showNotifications ? "bg-[#F0EDF7] border-[#433075] ring-2 ring-[#433075]/10" : ""
+                }`}
+                title="View Notifications"
+              >
+                <Bell className={`w-4 h-4 text-[#433075] ${bellWiggle ? "animate-wiggle text-amber-500" : ""}`} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[9px] font-black border border-white animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <>
+                    {/* Backdrop to close dropdown on click outside */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowNotifications(false)}
+                    />
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2.5 w-80 sm:w-96 bg-white border-2 border-[#433075] rounded-3xl shadow-2xl z-50 overflow-hidden text-[#0D0D0D] flex flex-col max-h-[480px]"
+                    >
+                      {/* Header */}
+                      <div className="p-4 bg-[#F0EDF7] border-b border-[#C8CED6]/60 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-[#433075]" />
+                          <span className="text-xs font-black text-[#0D0D0D] uppercase tracking-wide">Notifications</span>
+                        </div>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllAsRead}
+                            className="text-[9px] text-[#433075] hover:text-[#A58CF4] font-black uppercase cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Notification List */}
+                      <div className="overflow-y-auto flex-1 divide-y divide-[#C8CED6]/30 max-h-[360px] overflow-x-hidden">
+                        <AnimatePresence mode="popLayout">
+                          {notifications.length === 0 ? (
+                            <motion.div 
+                              key="empty-state"
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              className="p-8 text-center space-y-2"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-[#F7F7F7] flex items-center justify-center mx-auto text-[#736A86]">
+                                <Info className="w-5 h-5" />
+                              </div>
+                              <p className="text-xs font-black text-[#736A86]">No notifications yet</p>
+                              <p className="text-[10px] text-[#736A86] font-semibold">Updates and sync event summaries will log here.</p>
+                            </motion.div>
+                          ) : (
+                            notifications.map((notif) => {
+                              const NotifIcon = notif.type === "success" 
+                                ? CheckCircle2 
+                                : notif.type === "update" 
+                                ? Sparkles 
+                                : notif.type === "warning" 
+                                ? AlertTriangle 
+                                : Info;
+                              return (
+                                <motion.div 
+                                  layout
+                                  initial={{ opacity: 0, x: -20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: "100%", transition: { duration: 0.25, ease: "easeIn" } }}
+                                  key={notif.id} 
+                                  className={`p-4 transition-all flex gap-3 ${
+                                    notif.read ? "bg-white opacity-85" : "bg-[#F0EDF7]/20 border-l-4 border-[#433075]"
+                                  }`}
+                                >
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                    notif.type === "success" 
+                                      ? "bg-emerald-50 text-emerald-600" 
+                                      : notif.type === "update" 
+                                      ? "bg-purple-50 text-[#A58CF4]" 
+                                      : notif.type === "warning" 
+                                      ? "bg-amber-50 text-amber-600" 
+                                      : "bg-indigo-50 text-[#433075]"
+                                  }`}>
+                                    <NotifIcon className="w-4 h-4" />
+                                  </div>
+                                  <div className="flex-1 min-w-0 space-y-1">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h4 className="text-xs font-black text-[#0D0D0D] truncate">{notif.title}</h4>
+                                      <span className="text-[9px] text-[#736A86] font-bold shrink-0">
+                                        {formatRelativeTime(notif.timestamp)}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-[#736A86] font-semibold leading-relaxed break-words">
+                                      {notif.message}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleRemoveNotification(notif.id)}
+                                    className="text-[#736A86] hover:text-rose-500 p-1 shrink-0 cursor-pointer self-start transition-colors"
+                                    title="Delete item"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </motion.div>
+                              );
+                            })
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Footer */}
+                      {notifications.length > 0 && (
+                        <div className="p-3 bg-[#F7F7F7] border-t border-[#C8CED6]/40 flex justify-center">
+                          <button
+                            onClick={handleClearAll}
+                            className="text-[9px] text-rose-500 hover:text-rose-700 font-black uppercase flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Clear all history</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <StaggeredMenu
               position="right"
               items={menuItems}
@@ -195,6 +481,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                 {activeTab === "home" && (
                   <OverviewSection 
                     userName={userName} 
+                    user={user}
                     onNavigate={(section) => {
                       if (section === "flashcards") {
                         handleTabChange("practice");
@@ -212,47 +499,8 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                   />
                 )}
                 {activeTab === "decks" && <DecksSection user={user} />}
-                {activeTab === "practice" && (
-                  <div className="space-y-6">
-                    {/* Sub-tab navigation selector for Practice */}
-                    <div className="flex items-center gap-2 border-b border-[#C8CED6] pb-3 mb-6">
-                      <button
-                        onClick={() => setPracticeSubTab("vocabulary")}
-                        className={`px-5 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-                          practiceSubTab === "vocabulary"
-                            ? "bg-[#433075] text-white shadow-md border border-[#A58CF4]"
-                            : "text-[#736A86] hover:bg-white border border-transparent hover:border-[#C8CED6]"
-                        }`}
-                      >
-                        AI Lexicon Vault
-                      </button>
-                      <button
-                        onClick={() => setPracticeSubTab("ailabs")}
-                        className={`px-5 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-                          practiceSubTab === "ailabs"
-                            ? "bg-[#433075] text-white shadow-md border border-[#A58CF4]"
-                            : "text-[#736A86] hover:bg-white border border-transparent hover:border-[#C8CED6]"
-                        }`}
-                      >
-                        AI Neural Lab
-                      </button>
-                      <button
-                        onClick={() => setPracticeSubTab("flashcards")}
-                        className={`px-5 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-                          practiceSubTab === "flashcards"
-                            ? "bg-[#433075] text-white shadow-md border border-[#A58CF4]"
-                            : "text-[#736A86] hover:bg-white border border-transparent hover:border-[#C8CED6]"
-                        }`}
-                      >
-                        Smart Flashcards
-                      </button>
-                    </div>
-                    {practiceSubTab === "vocabulary" && <VocabularySection />}
-                    {practiceSubTab === "ailabs" && <AILabsSection />}
-                    {practiceSubTab === "flashcards" && <FlashcardsSection />}
-                  </div>
-                )}
-                {activeTab === "progress" && <AnalyticsSection />}
+                {activeTab === "practice" && <PracticeSection user={user} />}
+                {activeTab === "progress" && <AnalyticsSection user={user} />}
                 {activeTab === "settings" && <SettingsSection user={user} onSignOut={() => setShowSignOutConfirm(true)} userName={userName} />}
               </motion.div>
             </AnimatePresence>

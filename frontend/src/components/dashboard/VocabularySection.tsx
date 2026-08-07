@@ -16,6 +16,8 @@ import {
   RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import CustomSelect from "../ui/CustomSelect";
+import { supabase } from "@/lib/supabase";
 
 interface WordItem {
   id: string;
@@ -24,7 +26,7 @@ interface WordItem {
   partOfSpeech: string;
   definition: string;
   example: string;
-  category: "GRE" | "TOEFL" | "IELTS" | "Business";
+  category: "Essential" | "Advanced";
   status: "Mastered" | "Learning" | "Review";
 }
 
@@ -43,71 +45,48 @@ export default function VocabularySection() {
     partOfSpeech: "adjective",
     definition: "",
     example: "",
-    category: "GRE" as const
+    category: "Essential" as const
   });
 
-  const [wordsList, setWordsList] = useState<WordItem[]>([
-    {
-      id: "w1",
-      word: "Perspicacious",
-      phonetic: "/ˌpɜː.spɪˈkeɪ.ʃəs/",
-      partOfSpeech: "adjective",
-      definition: "Having or showing an extraordinary penetrating mental discernment and understanding; clearsighted and acutely insightful in judgment.",
-      example: "His perspicacious analysis of the volatile geopolitical situation enabled the committee to avert prolonged diplomatic escalation.",
-      category: "GRE",
-      status: "Mastered",
-    },
-    {
-      id: "w2",
-      word: "Recalcitrant",
-      phonetic: "/rɪˈkæl.sɪ.trənt/",
-      partOfSpeech: "adjective",
-      definition: "Having an obstinately uncooperative attitude toward authority, institutional directives, or discipline; stubborn and resistant to moral suasion.",
-      example: "The corporate restructuring was significantly impeded by recalcitrant executive managers who clung desperately to obsolete paradigms.",
-      category: "GRE",
-      status: "Learning",
-    },
-    {
-      id: "w3",
-      word: "Equanimity",
-      phonetic: "/ˌiː.kwəˈnɪm.ə.ti/",
-      partOfSpeech: "noun",
-      definition: "Mental calmness, self-possession, and unshakeable inner stability, particularly displayed under conditions of severe distress or high stress.",
-      example: "During the catastrophic system failure, the principal architect maintained absolute equanimity, guiding the engineers to calm restoration.",
-      category: "TOEFL",
-      status: "Mastered",
-    },
-    {
-      id: "w4",
-      word: "Obsecrate",
-      phonetic: "/ˈɒb.sɪ.kreɪt/",
-      partOfSpeech: "verb",
-      definition: "To beseech, implore, or pray earnestly for mercy or pardon; to entreat somebody with extreme urgency and profound solemnity.",
-      example: "The defeated delegation could only obsecrate the reigning committee for humanitarian leniency during the treaty negotiations.",
-      category: "GRE",
-      status: "Review",
-    },
-    {
-      id: "w5",
-      word: "Sycophantic",
-      phonetic: "/ˌsɪk.əˈfæn.tɪk/",
-      partOfSpeech: "adjective",
-      definition: "Behaving or done in an obsequious way in order to gain advantage; overly fawning and ingratiating toward powerful figures.",
-      example: "The board rejected the sycophantic appraisals from subordinate junior partners, demanding rigorous and impartial objective criticism.",
-      category: "IELTS",
-      status: "Learning",
-    },
-    {
-      id: "w6",
-      word: "Proscriptive",
-      phonetic: "/prəˈskrɪp.tɪv/",
-      partOfSpeech: "adjective",
-      definition: "Relating to or imposing severe moral or legal prohibitions; expressly forbidding specific practices or behaviors within an organization.",
-      example: "The enterprise introduced strict proscriptive governance regulations concerning unauthorized artificial intelligence deployments.",
-      category: "Business",
-      status: "Mastered",
-    },
-  ]);
+  const [wordsList, setWordsList] = useState<WordItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchWords = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data, error } = await supabase
+          .from("vocabulary_vault")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          const mappedWords = data.map((d: any) => ({
+            id: d.id,
+            word: d.word,
+            phonetic: d.phonetic,
+            partOfSpeech: d.part_of_speech,
+            definition: d.definition,
+            example: d.example,
+            category: d.category,
+            status: d.status
+          }));
+          setWordsList(mappedWords);
+          if (mappedWords.length > 0) setActiveWordId(mappedWords[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching vocabulary vault:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchWords();
+  }, []);
 
   // Filter logic
   const filteredWords = useMemo(() => {
@@ -136,35 +115,73 @@ export default function VocabularySection() {
   };
 
   // Toggle word mastery status
-  const handleToggleStatus = (id: string) => {
+  const handleToggleStatus = async (id: string) => {
+    const wordIndex = wordsList.findIndex(w => w.id === id);
+    if (wordIndex === -1) return;
+    
+    const currentStatus = wordsList[wordIndex].status;
+    const nextStatus = currentStatus === "Learning" ? "Mastered" : currentStatus === "Mastered" ? "Review" : "Learning";
+    
+    // Optimistic UI update
     setWordsList((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const nextStatus = item.status === "Learning" ? "Mastered" : item.status === "Mastered" ? "Review" : "Learning";
-          return { ...item, status: nextStatus as any };
-        }
-        return item;
-      })
+      prev.map((item) => item.id === id ? { ...item, status: nextStatus as any } : item)
     );
+
+    try {
+      await supabase
+        .from("vocabulary_vault")
+        .update({ status: nextStatus, updated_at: new Date().toISOString() })
+        .eq("id", id);
+    } catch (err) {
+      console.error("Error updating status:", err);
+    }
   };
 
-  const handleCreateWord = (e: React.FormEvent) => {
+  const handleCreateWord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWord.word.trim() || !newWord.definition.trim()) return;
-    const item: WordItem = {
-      id: `w_${Date.now()}`,
-      word: newWord.word.trim(),
-      phonetic: newWord.phonetic.trim() || "/custom/",
-      partOfSpeech: newWord.partOfSpeech,
-      definition: newWord.definition.trim(),
-      example: newWord.example.trim() || "No contextual sentence recorded yet.",
-      category: newWord.category,
-      status: "Learning",
-    };
-    setWordsList([item, ...wordsList]);
-    setActiveWordId(item.id);
-    setIsAddModalOpen(false);
-    setNewWord({ word: "", phonetic: "", partOfSpeech: "adjective", definition: "", example: "", category: "GRE" });
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("vocabulary_vault")
+        .insert({
+          user_id: user.id,
+          word: newWord.word.trim(),
+          phonetic: newWord.phonetic.trim() || "/custom/",
+          part_of_speech: newWord.partOfSpeech,
+          definition: newWord.definition.trim(),
+          example: newWord.example.trim() || "No contextual sentence recorded yet.",
+          category: newWord.category,
+          status: "Learning"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const item: WordItem = {
+          id: data.id,
+          word: data.word,
+          phonetic: data.phonetic,
+          partOfSpeech: data.part_of_speech,
+          definition: data.definition,
+          example: data.example,
+          category: data.category,
+          status: data.status,
+        };
+        setWordsList([item, ...wordsList]);
+        setActiveWordId(item.id);
+        setIsAddModalOpen(false);
+        setNewWord({ word: "", phonetic: "", partOfSpeech: "adjective", definition: "", example: "", category: "Essential" });
+        (window as any).wordnestNotify?.("Word Added", `"${item.word}" has been added to your Lexicon Vault.`, "success");
+      }
+    } catch (err) {
+      console.error("Error adding word:", err);
+    }
   };
 
   return (
@@ -213,7 +230,7 @@ export default function VocabularySection() {
           <span className="text-xs font-black text-[#736A86] mr-1 flex items-center gap-1">
             <Filter className="w-3.5 h-3.5 text-[#433075]" /> Category:
           </span>
-          {["ALL", "GRE", "TOEFL", "IELTS", "Business"].map((cat) => (
+          {["ALL", "Essential", "Advanced"].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
@@ -252,7 +269,11 @@ export default function VocabularySection() {
         
         {/* WORD LIST COLUMN */}
         <div className="lg:col-span-5 space-y-3 max-h-[660px] overflow-y-auto pr-1">
-          {filteredWords.length === 0 ? (
+          {isLoading ? (
+             <div className="p-8 text-center text-xs text-[#736A86] animate-pulse">
+               Syncing Lexicon Vault...
+             </div>
+          ) : filteredWords.length === 0 ? (
             <div className="p-8 rounded-3xl bg-white border border-[#C8CED6] text-center text-xs text-[#736A86]">
               No vocabulary terms match your specific filter queries.
             </div>
@@ -445,29 +466,29 @@ export default function VocabularySection() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="font-black text-[#0D0D0D] uppercase text-[11px]">Part of Speech</label>
-                    <select
+                    <CustomSelect
                       value={newWord.partOfSpeech}
-                      onChange={(e) => setNewWord({ ...newWord, partOfSpeech: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#433075] focus:border-[#433075] focus:bg-white focus:outline-none text-[#0D0D0D] font-bold"
-                    >
-                      <option value="adjective" className="bg-white">Adjective</option>
-                      <option value="noun" className="bg-white">Noun</option>
-                      <option value="verb" className="bg-white">Verb</option>
-                      <option value="adverb" className="bg-white">Adverb</option>
-                    </select>
+                      onChange={(val) => setNewWord({ ...newWord, partOfSpeech: val })}
+                      options={[
+                        { value: "adjective", label: "Adjective" },
+                        { value: "noun", label: "Noun" },
+                        { value: "verb", label: "Verb" },
+                        { value: "adverb", label: "Adverb" }
+                      ]}
+                      className="w-full"
+                    />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-black text-[#0D0D0D] uppercase text-[11px]">Academic Category</label>
-                    <select
+                    <label className="font-black text-[#0D0D0D] uppercase text-[11px]">Vocabulary Category</label>
+                    <CustomSelect
                       value={newWord.category}
-                      onChange={(e) => setNewWord({ ...newWord, category: e.target.value as any })}
-                      className="w-full p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#433075] focus:border-[#433075] focus:bg-white focus:outline-none text-[#0D0D0D] font-bold"
-                    >
-                      <option value="GRE" className="bg-white">GRE</option>
-                      <option value="TOEFL" className="bg-white">TOEFL</option>
-                      <option value="IELTS" className="bg-white">IELTS</option>
-                      <option value="Business" className="bg-white">Business</option>
-                    </select>
+                      onChange={(val) => setNewWord({ ...newWord, category: val as any })}
+                      options={[
+                        { value: "Essential", label: "Essential" },
+                        { value: "Advanced", label: "Advanced" }
+                      ]}
+                      className="w-full"
+                    />
                   </div>
                 </div>
 

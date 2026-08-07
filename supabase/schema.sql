@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT,
     avatar_url TEXT,
     provider TEXT DEFAULT 'email',
+    daily_target INTEGER DEFAULT 30,
+    notifications_enabled BOOLEAN DEFAULT TRUE,
+    streak_reminders_enabled BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -19,14 +22,17 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Allow public reading of basic user profiles
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles
     FOR SELECT USING (TRUE);
 
 -- Allow authenticated users to update their own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
     FOR UPDATE USING (auth.uid() = id);
 
 -- Allow service or self-insert upon registration
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
     FOR INSERT WITH CHECK (auth.uid() = id);
 
@@ -96,12 +102,18 @@ CREATE TABLE IF NOT EXISTS public.flashcards (
 ALTER TABLE public.study_sets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flashcards ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow read access to public study sets" ON public.study_sets;
 CREATE POLICY "Allow read access to public study sets" ON public.study_sets FOR SELECT USING (is_public = TRUE OR auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can manage own study sets" ON public.study_sets;
 CREATE POLICY "Users can manage own study sets" ON public.study_sets FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Allow read access to public flashcards" ON public.flashcards;
 CREATE POLICY "Allow read access to public flashcards" ON public.flashcards FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.study_sets WHERE id = set_id AND (is_public = TRUE OR user_id = auth.uid()))
 );
+
+DROP POLICY IF EXISTS "Users can manage own flashcards" ON public.flashcards;
 CREATE POLICY "Users can manage own flashcards" ON public.flashcards FOR ALL USING (
     EXISTS (SELECT 1 FROM public.study_sets WHERE id = set_id AND user_id = auth.uid())
 );

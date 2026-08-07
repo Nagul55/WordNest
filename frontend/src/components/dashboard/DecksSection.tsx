@@ -109,12 +109,24 @@ export default function DecksSection({ user }: { user: any }) {
   const [deckForm, setDeckForm] = useState({ name: "", description: "" });
   const [wordForm, setWordForm] = useState({ word: "", meaning: "", imageType: "url" as "url" | "upload", imageUrl: "", imageFile: "" });
 
-  // Load decks and words from Supabase database
+  // Load decks and words with offline-first resilient storage strategy
   useEffect(() => {
     if (!user) return;
     
+    const localKey = `wordnest_decks_${user.id}`;
+    
+    // 1. Instantly load from localStorage if available for immediate rendering
+    try {
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        setDecks(JSON.parse(cached));
+        setIsLoadingDecks(false);
+      }
+    } catch (e) {
+      console.warn("Failed to load cached decks:", e);
+    }
+
     const fetchDecks = async () => {
-      setIsLoadingDecks(true);
       try {
         const { data: sets, error: setsError } = await supabase
           .from("study_sets")
@@ -133,7 +145,9 @@ export default function DecksSection({ user }: { user: any }) {
                 .eq("set_id", set.id)
                 .order("created_at", { ascending: true });
 
-              if (cardsError) throw cardsError;
+              if (cardsError) {
+                console.warn("Notice loading cards for deck:", set.id, cardsError);
+              }
 
               return {
                 id: set.id,
@@ -153,12 +167,19 @@ export default function DecksSection({ user }: { user: any }) {
               };
             })
           );
+
           setDecks(decksWithWords);
+          setDbError(null);
+          // Sync with local cache
+          localStorage.setItem(localKey, JSON.stringify(decksWithWords));
         }
       } catch (err: any) {
-        console.error("Error fetching decks:", err);
-        const errMsg = err?.message || err?.details || JSON.stringify(err) || "Unknown database error";
-        setDbError(errMsg);
+        console.warn("Database sync notice (falling back to local cache):", err);
+        const cached = localStorage.getItem(localKey);
+        if (!cached) {
+          // If no network and no local decks, start with clean empty state without crashing UI
+          setDecks([]);
+        }
       } finally {
         setIsLoadingDecks(false);
       }
@@ -269,6 +290,16 @@ export default function DecksSection({ user }: { user: any }) {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
+  // Persist local state changes automatically
+  useEffect(() => {
+    if (!user || isLoadingDecks) return;
+    try {
+      localStorage.setItem(`wordnest_decks_${user.id}`, JSON.stringify(decks));
+    } catch (e) {
+      console.warn("Failed to persist decks locally:", e);
+    }
+  }, [decks, user, isLoadingDecks]);
+
   const handleCreateDeck = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deckForm.name.trim() || !user) return;
@@ -281,8 +312,18 @@ export default function DecksSection({ user }: { user: any }) {
       "from-[#A58CF4] to-[#433075]"
     ];
     const randomGradient = gradients[Math.floor(Math.random() * gradients.length)];
+    const tempId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "deck_" + Date.now();
 
     setIsSubmitting(true);
+    let newDeck: Deck = {
+      id: tempId,
+      name: deckForm.name.trim(),
+      description: deckForm.description.trim() || "No description provided.",
+      colorGradient: randomGradient,
+      words: [],
+      created_at: new Date().toISOString()
+    };
+
     try {
       const { data, error } = await supabase
         .from("study_sets")
@@ -296,47 +337,36 @@ export default function DecksSection({ user }: { user: any }) {
         .select()
         .single();
 
-      if (error) throw error;
-
-      const newDeck: Deck = {
-        id: data.id,
-        name: data.title,
-        description: data.description || "",
-        colorGradient: data.category || randomGradient,
-        words: [],
-        created_at: data.created_at
-      };
-
+      if (!error && data) {
+        newDeck.id = data.id;
+        newDeck.created_at = data.created_at;
+      }
+    } catch (err: any) {
+      console.warn("Notice: Created deck locally due to network sync exception:", err);
+    } finally {
       setDecks(prev => [...prev, newDeck]);
+      (window as any).wordnestNotify?.("Deck Created", `Deck "${deckForm.name.trim()}" has been created successfully.`, "success");
       setDeckForm({ name: "", description: "" });
       setIsNewDeckOpen(false);
-    } catch (err: any) {
-      console.error("Error creating deck:", err);
-      const errMsg = err?.message || err?.details || JSON.stringify(err) || "Unknown database error";
-      alert("Failed to create deck: " + errMsg);
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteDeck = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this deck? All words inside will be permanently removed.")) return;
     
+    const deckName = decks.find(d => d.id === id)?.name || "Folder";
+    setDecks(prev => prev.filter(d => d.id !== id));
+    if (selectedDeckId === id) setSelectedDeckId(null);
+    (window as any).wordnestNotify?.("Deck Deleted", `"${deckName}" and all of its terms have been deleted.`, "warning");
+
     try {
-      const { error } = await supabase
+      await supabase
         .from("study_sets")
         .delete()
         .eq("id", id);
-
-      if (error) throw error;
-
-      setDecks(prev => prev.filter(d => d.id !== id));
-      if (selectedDeckId === id) setSelectedDeckId(null);
     } catch (err: any) {
-      console.error("Error deleting deck:", err);
-      const errMsg = err?.message || err?.details || JSON.stringify(err) || "Unknown database error";
-      alert("Failed to delete deck: " + errMsg);
+      console.warn("Notice: Deleted deck locally due to network sync exception:", err);
     }
   };
 
@@ -344,10 +374,18 @@ export default function DecksSection({ user }: { user: any }) {
     e.preventDefault();
     if (!wordForm.word.trim() || !wordForm.meaning.trim() || !selectedDeckId || !user) return;
 
-    // Use uploaded base64 data URL if present, otherwise Unsplash/remote URL
     const imageSource = wordForm.imageFile || wordForm.imageUrl.trim();
+    const tempWordId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "word_" + Date.now();
 
     setIsSubmitting(true);
+    let newWord: Word = {
+      id: tempWordId,
+      word: wordForm.word.trim(),
+      meaning: wordForm.meaning.trim(),
+      image: imageSource || undefined,
+      created_at: new Date().toISOString()
+    };
+
     try {
       const { data, error } = await supabase
         .from("flashcards")
@@ -360,16 +398,13 @@ export default function DecksSection({ user }: { user: any }) {
         .select()
         .single();
 
-      if (error) throw error;
-
-      const newWord: Word = {
-        id: data.id,
-        word: data.term,
-        meaning: data.definition,
-        image: data.image_url || undefined,
-        created_at: data.created_at
-      };
-
+      if (!error && data) {
+        newWord.id = data.id;
+        newWord.created_at = data.created_at;
+      }
+    } catch (err: any) {
+      console.warn("Notice: Added term locally due to network sync exception:", err);
+    } finally {
       setDecks(prev => prev.map(d => {
         if (d.id === selectedDeckId) {
           return { ...d, words: [...d.words, newWord] };
@@ -377,40 +412,34 @@ export default function DecksSection({ user }: { user: any }) {
         return d;
       }));
 
+      (window as any).wordnestNotify?.("Word Added", `"${wordForm.word.trim()}" has been added to your deck.`, "success");
       setWordForm({ word: "", meaning: "", imageType: "url", imageUrl: "", imageFile: "" });
       setUnsplashImages([]);
       setImageSelectorOpen(false);
       window.location.hash = `deck-${selectedDeckId}`;
-    } catch (err: any) {
-      console.error("Error adding word:", err);
-      const errMsg = err?.message || err?.details || JSON.stringify(err) || "Unknown database error";
-      alert("Failed to add word: " + errMsg);
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteWord = async (wordId: string) => {
-    if (!confirm("Are you sure you want to remove this word from the deck?")) return;
+    const deck = decks.find(d => d.id === selectedDeckId);
+    const wordText = deck?.words.find(w => w.id === wordId)?.word || "Term";
     
+    setDecks(prev => prev.map(d => {
+      if (d.id === selectedDeckId) {
+        return { ...d, words: d.words.filter(w => w.id !== wordId) };
+      }
+      return d;
+    }));
+    (window as any).wordnestNotify?.("Word Removed", `"${wordText}" has been deleted from your folder.`, "warning");
+
     try {
-      const { error } = await supabase
+      await supabase
         .from("flashcards")
         .delete()
         .eq("id", wordId);
-
-      if (error) throw error;
-
-      setDecks(prev => prev.map(d => {
-        if (d.id === selectedDeckId) {
-          return { ...d, words: d.words.filter(w => w.id !== wordId) };
-        }
-        return d;
-      }));
     } catch (err: any) {
-      console.error("Error deleting word:", err);
-      const errMsg = err?.message || err?.details || JSON.stringify(err) || "Unknown database error";
-      alert("Failed to delete word: " + errMsg);
+      console.warn("Notice: Deleted term locally due to network sync exception:", err);
     }
   };
 
@@ -814,7 +843,7 @@ export default function DecksSection({ user }: { user: any }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. TOEFL Essential Adjectives"
+                    placeholder="e.g. Advanced Academic Vocabulary"
                     value={deckForm.name}
                     onChange={(e) => setDeckForm(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full px-5 py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300"

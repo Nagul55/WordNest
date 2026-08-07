@@ -24,74 +24,54 @@ interface Flashcard {
   phonetic: string;
   definition: string;
   example: string;
-  deck: "GRE High-Frequency" | "TOEFL Academic" | "Executive Business";
+  deck: string;
   difficulty: "Easy" | "Medium" | "Hard";
 }
 
-export default function FlashcardsSection() {
-  const [activeDeck, setActiveDeck] = useState<string>("GRE High-Frequency");
+import { supabase } from "@/lib/supabase";
+
+export default function FlashcardsSection({ user }: { user?: any }) {
+  const [activeDeck, setActiveDeck] = useState<string>("ALL");
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
   const [sessionScore, setSessionScore] = useState<{ mastered: number; review: number }>({ mastered: 0, review: 0 });
   const [isSessionComplete, setIsSessionComplete] = useState<boolean>(false);
   const [playing, setPlaying] = useState<boolean>(false);
+  
+  const [allCards, setAllCards] = useState<Flashcard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const allCards: Flashcard[] = [
-    {
-      id: "fc1",
-      word: "Perspicacious",
-      phonetic: "/ˌpɜː.spɪˈkeɪ.ʃəs/",
-      definition: "Having or showing penetrating mental discernment and clear-sighted intellectual understanding.",
-      example: "Her perspicacious insights during the quarterly audit revealed hidden inefficiencies.",
-      deck: "GRE High-Frequency",
-      difficulty: "Medium"
-    },
-    {
-      id: "fc2",
-      word: "Recalcitrant",
-      phonetic: "/rɪˈkæl.sɪ.trənt/",
-      definition: "Obstinately defiant of authority or corporate instruction; stubborn and refractory.",
-      example: "The recalcitrant branch managers refused to migrate to the updated cloud system.",
-      deck: "GRE High-Frequency",
-      difficulty: "Hard"
-    },
-    {
-      id: "fc3",
-      word: "Equanimity",
-      phonetic: "/ˌiː.kwəˈnɪm.ə.ti/",
-      definition: "Evenness of mind or temper under stress; emotional composure and peace.",
-      example: "He handled the sudden market collapse with remarkable equanimity.",
-      deck: "GRE High-Frequency",
-      difficulty: "Easy"
-    },
-    {
-      id: "fc4",
-      word: "Proscriptive",
-      phonetic: "/prəˈskrɪp.tɪv/",
-      definition: "Imposing severe mandatory restrictions or express official forbiddances.",
-      example: "Proscriptive guidelines prevented the deployment of untested algorithms in production.",
-      deck: "Executive Business",
-      difficulty: "Hard"
-    },
-    {
-      id: "fc5",
-      word: "Sycophantic",
-      phonetic: "/ˌsɪk.əˈfæn.tɪk/",
-      definition: "Behaving or done in an obsequious manner in order to gain illegitimate professional leverage.",
-      example: "The board dismissed his sycophantic flattery as an attempt to cover poor KPIs.",
-      deck: "TOEFL Academic",
-      difficulty: "Medium"
-    },
-    {
-      id: "fc6",
-      word: "Obsecrate",
-      phonetic: "/ˈɒb.sɪ.kreɪt/",
-      definition: "To supplicate or implore someone with extreme earnestness and urgent solemnity.",
-      example: "The counsel chose to obsecrate the judiciary for emergency clemency.",
-      deck: "TOEFL Academic",
-      difficulty: "Hard"
-    }
-  ];
+  React.useEffect(() => {
+    const fetchFlashcards = async () => {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from("vocabulary_vault")
+          .select("*")
+          .eq("user_id", user.id);
+        
+        if (error) throw error;
+        
+        if (data) {
+          const formatted = data.map((d: any) => ({
+            id: d.id,
+            word: d.term,
+            phonetic: "/ˌfəˈnet.ɪk/", // Mocked phonetics for now if not in DB
+            definition: d.definition,
+            example: d.example_sentence || "No example provided.",
+            deck: "Essential Vocabulary",
+            difficulty: "Medium" as any
+          }));
+          setAllCards(formatted);
+        }
+      } catch (err) {
+        console.error("Error fetching flashcards:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFlashcards();
+  }, [user]);
 
   const deckCards = allCards.filter(card => card.deck === activeDeck || activeDeck === "ALL");
   const currentCard = deckCards[currentIndex] || deckCards[0];
@@ -99,17 +79,24 @@ export default function FlashcardsSection() {
 
   const handleNextCard = (known: boolean) => {
     setIsFlipped(false);
-    if (known) {
-      setSessionScore(prev => ({ ...prev, mastered: prev.mastered + 1 }));
-    } else {
-      setSessionScore(prev => ({ ...prev, review: prev.review + 1 }));
-    }
+    setTimeout(() => {
+      if (known) {
+        setSessionScore(prev => ({ ...prev, mastered: prev.mastered + 1 }));
+      } else {
+        setSessionScore(prev => ({ ...prev, review: prev.review + 1 }));
+      }
 
-    if (currentIndex + 1 < totalCards) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setIsSessionComplete(true);
-    }
+      if (currentIndex + 1 < totalCards) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        setIsSessionComplete(true);
+        (window as any).wordnestNotify?.(
+          "Session Completed!", 
+          `You finished all ${totalCards} cards in "${activeDeck === "ALL" ? "All Combined Decks" : activeDeck}".`, 
+          "success"
+        );
+      }
+    }, 400);
   };
 
   const handleRestartSession = () => {
@@ -119,15 +106,30 @@ export default function FlashcardsSection() {
     setIsSessionComplete(false);
   };
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setPlaying(false);
+    }
+  }, [isFlipped, currentIndex]);
+
   const handleSpeak = (e: React.MouseEvent, word: string) => {
     e.stopPropagation();
-    setPlaying(true);
     if ("speechSynthesis" in window) {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        setPlaying(false);
+        return;
+      }
+      setPlaying(true);
       const utterance = new SpeechSynthesisUtterance(word);
       utterance.rate = 0.9;
       utterance.onend = () => setPlaying(false);
+      utterance.onerror = () => setPlaying(false);
+      window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utterance);
     } else {
+      setPlaying(true);
       setTimeout(() => setPlaying(false), 800);
     }
   };
@@ -161,7 +163,7 @@ export default function FlashcardsSection() {
 
       {/* DECK SELECTOR TABS */}
       <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-        {["GRE High-Frequency", "TOEFL Academic", "Executive Business", "ALL"].map((deck) => (
+        {["Essential Vocabulary", "Advanced Vocabulary", "ALL"].map((deck) => (
           <button
             key={deck}
             onClick={() => {
@@ -224,28 +226,40 @@ export default function FlashcardsSection() {
           
           {/* Progress Indicator Bar */}
           <div className="flex items-center justify-between text-xs font-black text-[#736A86] max-w-2xl mx-auto px-1">
-            <span>Card <strong className="text-[#0D0D0D]">{currentIndex + 1}</strong> of <strong className="text-[#0D0D0D]">{totalCards}</strong></span>
+            <span>Card <strong className="text-[#0D0D0D]">{totalCards > 0 ? currentIndex + 1 : 0}</strong> of <strong className="text-[#0D0D0D]">{totalCards}</strong></span>
             <span className="text-[#433075] uppercase tracking-wider">Tap card to reveal definition</span>
           </div>
 
           <div className="w-full max-w-2xl mx-auto h-2.5 bg-[#F7F7F7] rounded-full overflow-hidden border border-[#C8CED6]">
             <div 
               className="h-full bg-gradient-to-r from-[#433075] to-[#A58CF4] transition-all duration-300"
-              style={{ width: `${((currentIndex + 1) / totalCards) * 100}%` }}
+              style={{ width: totalCards > 0 ? `${((currentIndex + 1) / totalCards) * 100}%` : "0%" }}
             />
           </div>
 
+          {isLoading ? (
+            <div className="text-center p-12 text-[#736A86] animate-pulse font-bold">Loading Flashcards...</div>
+          ) : deckCards.length === 0 ? (
+            <div className="text-center p-12 text-[#736A86] font-bold">No cards found in your vault. Please add vocabulary words first!</div>
+          ) : (
+
           {/* 3D PERSPECTIVE FLIP BOX */}
           <div 
-            onClick={() => setIsFlipped(!isFlipped)}
+            onClick={() => {
+              if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+                setPlaying(false);
+              }
+              setIsFlipped(!isFlipped);
+            }}
             className={`w-full max-w-2xl h-[380px] sm:h-[420px] mx-auto cursor-pointer perspective-1000 ${isFlipped ? "flipped" : ""}`}
           >
-            <div className="relative w-full h-full flip-card-inner transition-transform duration-500">
+            <div className="relative w-full h-full flip-card-inner">
               
               {/* ==========================================
                   FRONT OF CARD (TERM & SPEECH)
                   ========================================== */}
-              <div className="absolute inset-0 w-full h-full rounded-3xl bg-white border-2 border-[#C8CED6] hover:border-[#433075] p-8 sm:p-12 flex flex-col justify-between backface-hidden shadow-xl group transition-all">
+              <div className="flip-card-front rounded-3xl bg-white border-2 border-[#C8CED6] hover:border-[#433075] p-8 sm:p-12 flex flex-col justify-between shadow-xl group transition-all">
                 <div className="flex items-center justify-between">
                   <span className="px-3.5 py-1 rounded-full bg-[#F7F7F7] text-[#433075] font-black text-xs uppercase tracking-wider border border-[#C8CED6] shadow-sm">
                     {currentCard.deck}
@@ -283,7 +297,7 @@ export default function FlashcardsSection() {
               {/* ==========================================
                   BACK OF CARD (DEFINITION & EXAMPLE) - VIBRANT PURPLE OVERLAY
                   ========================================== */}
-              <div className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-b from-[#433075] to-[#272A3B] text-[#FAFAFA] border-2 border-[#A58CF4] p-8 sm:p-10 flex flex-col justify-between flip-card-back backface-hidden shadow-2xl overflow-y-auto">
+              <div className="flip-card-back rounded-3xl bg-gradient-to-b from-[#433075] to-[#272A3B] text-[#FAFAFA] border-2 border-[#A58CF4] p-8 sm:p-10 flex flex-col justify-between shadow-2xl overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-[#A58CF4]/40 pb-3">
                   <span className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-[#A58CF4]" />
@@ -330,7 +344,7 @@ export default function FlashcardsSection() {
               <span>Mastered & Retained (Easy)</span>
             </button>
           </div>
-
+          )}
         </div>
       )}
 

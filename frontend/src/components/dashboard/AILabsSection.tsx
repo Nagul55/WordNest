@@ -25,7 +25,9 @@ interface LabMode {
   placeholder: string;
 }
 
-export default function AILabsSection() {
+import { supabase } from "@/lib/supabase";
+
+export default function AILabsSection({ user }: { user?: any }) {
   const [activeMode, setActiveMode] = useState<string>("socratic");
   const [inputText, setInputText] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -67,10 +69,12 @@ export default function AILabsSection() {
     setCopied(false);
 
     // Simulate real-time neural synthesis delay
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsAnalyzing(false);
+      let output = "";
+
       if (activeMode === "socratic") {
-        setAiOutput(
+        output =
           `🧠 SOCRATIC DISSECTION REPORT FOR: "${inputText.trim()}"\n\n` +
           `1. ETYMOLOGICAL ROOT ARCHITECTURE:\n` +
           `• Core linguistic origin traced to classical syntax denoting profound structural foundations.\n\n` +
@@ -78,27 +82,40 @@ export default function AILabsSection() {
           `• If this concept were absent from modern discourse, what analytical void would emerge in critical theory?\n` +
           `• How does this term distinguish itself from colloquial approximate synonyms?\n\n` +
           `3. MEMORABLE SYNAPTIC ANALOGY:\n` +
-          `• Think of this concept as the architectural keystone of an arched stone bridge—without its specific structural equilibrium, the surrounding logical framework inevitably collapses.`
-        );
+          `• Think of this concept as the architectural keystone of an arched stone bridge—without its specific structural equilibrium, the surrounding logical framework inevitably collapses.`;
       } else if (activeMode === "polish") {
-        setAiOutput(
+        output =
           `✨ ACADEMIC LEXICAL REFINEMENT OUTPUT:\n\n` +
           `ORIGINAL DRAFT:\n"${inputText.trim()}"\n\n` +
           `ELEVATED SCHOLARLY TRANSFORMATION:\n` +
           `"Through rigorous empirical synthesis and systematic scrutiny, the underlying dynamics demonstrate an unequivocal progression toward paradigmatic optimization."\n\n` +
           `LEXICAL UPGRADES APPLIED:\n` +
           `• 'looked closely' ➔ 'systematic scrutiny'\n` +
-          `• 'clear change' ➔ 'unequivocal progression'`
-        );
+          `• 'clear change' ➔ 'unequivocal progression'`;
       } else {
-        setAiOutput(
+        output =
           `💡 NEURAL MNEMONIC ASSOCIATION FOR: "${inputText.trim()}"\n\n` +
           `• VIVID SCENARIO HOOK:\n` +
           `Imagine an elaborate banquet hall where every guest personifies this exact term, wearing regal garments embroidered with golden symbolic icons.\n\n` +
           `• RHYTHMIC AUDITORY CUE:\n` +
           `"When memory wavers in the dead of night, recall the phonetic cadence to restore intellectual sight!"\n\n` +
-          `• RETENTION SCORE BOOST: +85% predicted recall efficiency over 14-day spaced interval.`
-        );
+          `• RETENTION SCORE BOOST: +85% predicted recall efficiency over 14-day spaced interval.`;
+      }
+
+      setAiOutput(output);
+
+      // Save log to database
+      if (user?.id) {
+        try {
+          await supabase.from("ai_logs").insert({
+            user_id: user.id,
+            log_type: activeMode,
+            query_term: inputText.trim(),
+            generated_content: output
+          });
+        } catch (e) {
+          console.error("Failed to save AI log to database", e);
+        }
       }
     }, 1200);
   };
