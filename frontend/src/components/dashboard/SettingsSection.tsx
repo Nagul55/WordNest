@@ -42,6 +42,7 @@ import CustomSelect from "../ui/CustomSelect";
 interface SettingsProps {
   user: any;
   onSignOut: () => void;
+  onSignOutDirect?: () => void;
   userName: string;
   prefetchedSessions?: any[] | null;
   prefetchedFlashcards?: any[] | null;
@@ -50,6 +51,7 @@ interface SettingsProps {
 export default function SettingsSection({ 
   user, 
   onSignOut, 
+  onSignOutDirect,
   userName,
   prefetchedSessions,
   prefetchedFlashcards
@@ -90,6 +92,7 @@ export default function SettingsSection({
   // Account Deletion States
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
 
 
@@ -341,8 +344,9 @@ export default function SettingsSection({
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirmText !== "DELETE" || !user?.id) return;
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE" || !user?.id) return;
 
+    setIsDeletingAccount(true);
     try {
       // 1. Get the current user session token
       const { data: sessionData } = await supabase.auth.getSession();
@@ -382,14 +386,21 @@ export default function SettingsSection({
       // Close modal
       setShowDeleteConfirm(false);
 
-      // 4. Log out/Sign out session
-      setTimeout(() => {
+      // 4. Sign out Supabase auth session client-side immediately
+      await supabase.auth.signOut();
+
+      // 5. Execute direct sign out navigation
+      if (onSignOutDirect) {
+        onSignOutDirect();
+      } else {
         onSignOut();
-      }, 1000);
+      }
 
     } catch (err: any) {
       console.error("Account deletion exception:", err);
       (window as any).wordnestNotify?.("Deletion Failed", err.message || "An unexpected error occurred during account deletion.", "error");
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -1270,12 +1281,12 @@ export default function SettingsSection({
             </div>
 
             <div className="rounded-[2rem] bg-red-50/50 backdrop-blur-xl border border-red-200 shadow-sm hover:shadow-md hover:border-red-400 transition-all duration-300 p-6 sm:p-8 space-y-4 relative z-10">
-              <h4 className="text-xs font-black uppercase text-red-600 tracking-wider flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4" />
-                Danger Zone
+              <h4 className="text-xs sm:text-sm font-black uppercase text-red-600 tracking-wider flex items-center gap-1.5">
+                <AlertCircle className="w-4.5 h-4.5 shrink-0" />
+                <span>Danger Zone</span>
               </h4>
-              <p className="text-[11px] text-[#736A86] font-semibold leading-relaxed">
-                Delete your scholar profile, all custom decks, and study logs forever. This action is irreversible.
+              <p className="text-xs text-[#736A86] font-semibold leading-relaxed">
+                Delete your scholar profile, all custom decks, and study logs forever. This action is permanent and irreversible.
               </p>
               <button
                 type="button"
@@ -1283,9 +1294,10 @@ export default function SettingsSection({
                   setShowDeleteConfirm(true);
                   setDeleteConfirmText("");
                 }}
-                className="px-4 py-2.5 rounded-xl bg-red-600 text-white font-black text-xs hover:bg-red-700 active:scale-95 transition-all shadow"
+                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
               >
-                Delete Profile and Data
+                <AlertCircle className="w-4 h-4" />
+                <span>Delete Profile and Data</span>
               </button>
             </div>
             </motion.div>
@@ -1509,51 +1521,93 @@ Grade their usage out of 100, analyze parts of speech, and provide suggestions.`
       {/* Account Deletion Confirmation Modal */}
       <AnimatePresence>
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !isDeletingAccount) {
+                setShowDeleteConfirm(false);
+              }
+            }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white p-6 rounded-3xl shadow-2xl max-w-md w-full border border-red-200 text-center space-y-5 "
+              className="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-md w-full border border-red-200 text-center space-y-5 max-h-[90vh] overflow-y-auto relative"
             >
-              <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <Lock className="w-6 h-6 text-red-600" />
+              {/* Close Button */}
+              <button
+                type="button"
+                disabled={isDeletingAccount}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-red-50 text-[#736A86] hover:text-red-600 transition-colors cursor-pointer disabled:opacity-30"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center shadow-inner">
+                <Lock className="w-7 h-7 text-red-600" />
               </div>
+
               <div className="space-y-2">
-                <h3 className="text-lg font-black text-red-600 uppercase">Confirm Account Deletion</h3>
-                <p className="text-xs text-[#736A86] leading-relaxed">
+                <h3 className="text-base sm:text-lg font-black text-red-600 uppercase tracking-tight">Confirm Account Deletion</h3>
+                <p className="text-xs text-[#736A86] leading-relaxed font-semibold">
                   This action is permanent and irreversible. Your profile, custom study decks, learning history, and AI session logs will be completely wiped from the system.
                 </p>
               </div>
               
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase text-[#736A86] block text-left">
-                  Type <span className="text-red-600 font-extrabold select-all">DELETE</span> to confirm permission:
-                </label>
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-black uppercase text-[#736A86] block text-left">
+                    Type <span className="text-red-600 font-extrabold select-all">DELETE</span> to confirm:
+                  </label>
+                  <button
+                    type="button"
+                    disabled={isDeletingAccount}
+                    onClick={() => setDeleteConfirmText("DELETE")}
+                    className="text-[10px] font-black text-[#433075] bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    Tap to fill DELETE
+                  </button>
+                </div>
+                
                 <input
                   type="text"
                   value={deleteConfirmText}
+                  disabled={isDeletingAccount}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   placeholder="Type DELETE"
-                  className="w-full p-3 rounded-xl border border-[#C8CED6] text-[#0D0D0D] font-bold text-xs outline-none focus:border-red-500 text-center placeholder:text-[#C8CED6] transition-all bg-[#FAFAFA]"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="w-full p-3.5 rounded-xl border border-[#C8CED6] text-[#0D0D0D] font-black text-sm outline-none focus:border-red-500 text-center placeholder:text-[#C8CED6] transition-all bg-[#FAFAFA] disabled:opacity-50"
                 />
               </div>
 
-              <div className="flex gap-4 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3">
                 <button
                   type="button"
+                  disabled={isDeletingAccount}
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="w-1/2 py-2.5 rounded-xl border border-[#C8CED6] hover:bg-[#F7F7F7] text-[#736A86] font-black text-xs transition-all cursor-pointer"
+                  className="w-full sm:w-1/2 py-3 rounded-xl border border-[#C8CED6] hover:bg-[#F7F7F7] text-[#736A86] font-black text-xs transition-all cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleDeleteAccount}
-                  disabled={deleteConfirmText !== "DELETE"}
-                  className="w-1/2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-all cursor-pointer shadow-lg disabled:opacity-40 disabled:cursor-not-allowed border border-transparent hover:border-red-700"
+                  disabled={deleteConfirmText.trim().toUpperCase() !== "DELETE" || isDeletingAccount}
+                  className="w-full sm:w-1/2 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-all cursor-pointer shadow-lg disabled:opacity-40 disabled:cursor-not-allowed border border-transparent hover:border-red-700 flex items-center justify-center gap-2"
                 >
-                  Delete Account
+                  {isDeletingAccount ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <span>Delete Account</span>
+                  )}
                 </button>
               </div>
             </motion.div>

@@ -612,6 +612,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                   <SettingsSection 
                     user={user} 
                     onSignOut={() => setShowSignOutConfirm(true)} 
+                    onSignOutDirect={onSignOut}
                     userName={displayUserName} 
                     prefetchedSessions={prefetchedSessions}
                     prefetchedFlashcards={prefetchedFlashcards}
