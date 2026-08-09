@@ -28,9 +28,12 @@ import {
   CreditCard,
   Database,
   Terminal,
+  ChevronRight,
+  ChevronsRight,
   Brain,
   HardDrive,
-  Pencil
+  Pencil,
+  AlertCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -40,18 +43,53 @@ interface SettingsProps {
   user: any;
   onSignOut: () => void;
   userName: string;
+  prefetchedSessions?: any[] | null;
+  prefetchedFlashcards?: any[] | null;
 }
 
-export default function SettingsSection({ user, onSignOut, userName }: SettingsProps) {
+export default function SettingsSection({ 
+  user, 
+  onSignOut, 
+  userName,
+  prefetchedSessions,
+  prefetchedFlashcards
+}: SettingsProps) {
   const userEmail = user?.email || "";
   const [dailyTarget, setDailyTarget] = useState("30");
   const [notifications, setNotifications] = useState(true);
   const [streakReminders, setStreakReminders] = useState(true);
+  const [age, setAge] = useState("");
+  const [occupation, setOccupation] = useState("Student");
+  const [referralSource, setReferralSource] = useState("Social Media");
   const [avatarError, setAvatarError] = useState(false);
 
   // Sidebar Sub-tabs active state
-  const [activeSubTab, setActiveSubTab] = useState<string>("general");
+  const [activeSubTab, setActiveSubTab] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("settings_tab") || "general";
+    }
+    return "general";
+  });
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (activeSubTab && activeSubTab !== "general") {
+        params.set("settings_tab", activeSubTab);
+      } else {
+        params.delete("settings_tab");
+      }
+      const newUrl = "?" + params.toString() + window.location.hash;
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [activeSubTab]);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Account Deletion States
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
 
 
@@ -71,6 +109,56 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
   const [initialUsername, setInitialUsername] = useState(userName || "");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // Dynamic Academic Usage Stats
+  const [usageStats, setUsageStats] = useState({
+    cardsCount: 0,
+    aiEvaluationsCount: 0,
+    audioSynthesesCount: 0
+  });
+
+  React.useEffect(() => {
+    const fetchUsageData = async () => {
+      if (!user?.id) return;
+      try {
+        const flashcardCount = (prefetchedFlashcards !== undefined && prefetchedFlashcards !== null)
+          ? prefetchedFlashcards.length
+          : ((await supabase
+              .from("flashcards")
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", user.id)).count || 0);
+
+        const sessions = (prefetchedSessions !== undefined && prefetchedSessions !== null)
+          ? prefetchedSessions
+          : (await supabase
+              .from("practice_sessions")
+              .select("mode")
+              .eq("user_id", user.id)).data;
+
+        let aiCount = 0;
+        let audioCount = 0;
+        if (sessions) {
+          sessions.forEach(s => {
+            if (s.mode === "aigrader" || s.mode === "quiz") aiCount++;
+            if (s.mode === "spelling" || s.mode === "flashcards") audioCount += 2;
+          });
+        }
+
+        setUsageStats({
+          cardsCount: flashcardCount || 0,
+          aiEvaluationsCount: aiCount,
+          audioSynthesesCount: audioCount
+        });
+      } catch (err) {
+        console.warn("Notice: Failed to fetch usage stats", err);
+      }
+    };
+
+    fetchUsageData();
+  }, [user?.id, prefetchedSessions, prefetchedFlashcards]);
   const [usernameSuccess, setUsernameSuccess] = useState(false);
   const [isSavingUsername, setIsSavingUsername] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -102,7 +190,7 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("username, avatar_url, daily_target, notifications_enabled, streak_reminders_enabled")
+          .select("username, avatar_url, daily_target, notifications_enabled, streak_reminders_enabled, age, occupation, referral_source")
           .eq("id", user.id)
           .single();
         if (!error && data) {
@@ -114,6 +202,9 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
           if (data.daily_target) setDailyTarget(data.daily_target.toString());
           if (data.notifications_enabled !== null) setNotifications(data.notifications_enabled);
           if (data.streak_reminders_enabled !== null) setStreakReminders(data.streak_reminders_enabled);
+          if (data.age) setAge(data.age);
+          if (data.occupation) setOccupation(data.occupation);
+          if (data.referral_source) setReferralSource(data.referral_source);
 
           // Update local cache
           localStorage.setItem(profileKey, JSON.stringify({
@@ -121,7 +212,10 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
             username: data.username,
             daily_target: data.daily_target?.toString(),
             notifications_enabled: data.notifications_enabled,
-            streak_reminders_enabled: data.streak_reminders_enabled
+            streak_reminders_enabled: data.streak_reminders_enabled,
+            age: data.age,
+            occupation: data.occupation,
+            referral_source: data.referral_source
           }));
         }
       } catch (err) {
@@ -157,11 +251,14 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
       try {
         const { data } = await supabase
           .from("profiles")
-          .select("id")
-          .eq("username", username)
-          .maybeSingle();
+          .select("id, username")
+          .ilike("username", username);
 
-        if (data && data.id !== user.id) {
+        const isTaken = data?.some(
+          (profile) => profile.username.toLowerCase() === username.toLowerCase() && profile.id !== user.id
+        );
+
+        if (isTaken) {
           setUsernameError("Username is already taken.");
           setUsernameSuccess(false);
         } else {
@@ -184,34 +281,115 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
     if (usernameError || isCheckingUsername || !username || username === initialUsername) return;
     setIsSavingUsername(true);
 
-    // Save locally first
     try {
-      const profileKey = `wordnest_profile_${user?.id}`;
-      const existing = localStorage.getItem(profileKey);
-      const parsed = existing ? JSON.parse(existing) : {};
-      localStorage.setItem(profileKey, JSON.stringify({ ...parsed, username }));
-    } catch (e) {
-      console.warn("Failed to save local username:", e);
-    }
+      // 1. Double check case-insensitive uniqueness one last time
+      const { data: duplicateCheck } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .ilike("username", username);
 
-    setInitialUsername(username);
-    setUsernameSuccess(false);
+      const isTaken = duplicateCheck?.some(
+        (profile) => profile.username.toLowerCase() === username.toLowerCase() && profile.id !== user.id
+      );
 
-    try {
-      await supabase
+      if (isTaken) {
+        setUsernameError("Username is already taken.");
+        setUsernameSuccess(false);
+        setIsSavingUsername(false);
+        (window as any).wordnestNotify?.("Username Taken", "This display name is already registered by another scholar.", "error");
+        return;
+      }
+
+      // 2. Perform database update and check error
+      const { error: updateError } = await supabase
         .from("profiles")
         .update({ username, updated_at: new Date().toISOString() })
         .eq("id", user.id);
 
-      await supabase.auth.updateUser({
+      if (updateError) {
+        console.error("Database update error:", updateError);
+        (window as any).wordnestNotify?.("Update Failed", "This username is already taken. Please try another.", "error");
+        setIsSavingUsername(false);
+        return;
+      }
+
+      // 3. Update auth user metadata
+      const { error: authError } = await supabase.auth.updateUser({
         data: { username }
       });
-    } catch (err: any) {
-      console.warn("Notice: Network sync warning updating username (saved locally):", err);
-    } finally {
-      setIsSavingUsername(false);
+
+      if (authError) {
+        console.warn("Auth metadata update warning:", authError);
+      }
+
+      // 4. Update local storage only after database successfully updates!
+      const profileKey = `wordnest_profile_${user?.id}`;
+      const existing = localStorage.getItem(profileKey);
+      const parsed = existing ? JSON.parse(existing) : {};
+      localStorage.setItem(profileKey, JSON.stringify({ ...parsed, username }));
+
+      setInitialUsername(username);
+      setUsernameSuccess(false);
       setIsEditingName(false);
       (window as any).wordnestNotify?.("Profile Updated", "Scholar display name updated successfully.", "success");
+    } catch (err: any) {
+      console.warn("Notice: Error updating username:", err);
+      (window as any).wordnestNotify?.("Update Failed", "An unexpected error occurred while updating profile.", "error");
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE" || !user?.id) return;
+
+    try {
+      // 1. Get the current user session token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (!token) throw new Error("No active session token found");
+
+      // 2. Call the backend API to delete the user completely from auth.users (which cascade deletes profiles and data)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/delete`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to delete account securely");
+      }
+
+      // 3. Clear all local storage caches related to this user
+      localStorage.removeItem(`wordnest_profile_${user.id}`);
+      localStorage.removeItem(`wordnest_decks_${user.id}`);
+      
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes(user.id) || key.includes("wordnest_"))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      (window as any).wordnestNotify?.("Account Deleted", "Your profile and study history have been cleared.", "success");
+
+      // Close modal
+      setShowDeleteConfirm(false);
+
+      // 4. Log out/Sign out session
+      setTimeout(() => {
+        onSignOut();
+      }, 1000);
+
+    } catch (err: any) {
+      console.error("Account deletion exception:", err);
+      (window as any).wordnestNotify?.("Deletion Failed", err.message || "An unexpected error occurred during account deletion.", "error");
     }
   };
 
@@ -267,6 +445,39 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
         setIsCropModalOpen(true);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword.trim()) {
+      (window as any).wordnestNotify?.("Error", "Password cannot be empty.", "error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      (window as any).wordnestNotify?.("Error", "Passwords do not match.", "error");
+      return;
+    }
+    if (newPassword.length < 6) {
+      (window as any).wordnestNotify?.("Error", "Password must be at least 6 characters.", "error");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword.trim()
+      });
+
+      if (error) throw error;
+
+      (window as any).wordnestNotify?.("Password Updated", "Your account password has been updated successfully.", "success");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      console.error("Failed to update password:", err);
+      (window as any).wordnestNotify?.("Update Failed", err.message || "Failed to update password. Please try again.", "error");
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -389,6 +600,71 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
     }
   };
 
+  const scrollTabsRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = React.useState(true);
+
+  const checkTabScroll = () => {
+    if (scrollTabsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollTabsRef.current;
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 12);
+    }
+  };
+
+  React.useEffect(() => {
+    checkTabScroll();
+    window.addEventListener("resize", checkTabScroll);
+    return () => window.removeEventListener("resize", checkTabScroll);
+  }, []);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newName = username.trim();
+    if (!newName) return;
+
+    try {
+      if (user?.id) {
+        // 1. Save to local storage for instant offline loading
+        localStorage.setItem(`wordnest_username_${user.id}`, newName);
+
+        // 2. Upsert to Supabase profiles table
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          username: newName,
+          full_name: newName,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "id" });
+
+        // 3. Update Supabase auth user metadata
+        await supabase.auth.updateUser({
+          data: { full_name: newName, name: newName, username: newName }
+        });
+      }
+
+      // 4. Dispatch global real-time event to sync Welcome back banner instantly across app
+      window.dispatchEvent(new CustomEvent("wordnest-profile-updated", {
+        detail: { name: newName }
+      }));
+
+      (window as any).wordnestNotify?.(
+        "Profile Updated",
+        `Scholar name successfully updated to ${newName}.`,
+        "success"
+      );
+      setIsEditingName(false);
+    } catch (err: any) {
+      console.warn("Notice: Profile saved locally:", err);
+      window.dispatchEvent(new CustomEvent("wordnest-profile-updated", {
+        detail: { name: newName }
+      }));
+      (window as any).wordnestNotify?.(
+        "Profile Updated",
+        `Scholar name updated to ${newName}.`,
+        "success"
+      );
+      setIsEditingName(false);
+    }
+  };
+
   const handleCopyText = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -396,48 +672,128 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
   };
 
   // Sidebar structures - filtered options based on user feedback
-  const configTabs = [
+  interface SettingsTabItem {
+    id: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+  }
+
+  const configTabs: SettingsTabItem[] = [
     { id: "general", label: "General Settings", icon: Settings },
-    { id: "security", label: "Security & Sessions", icon: Lock }
+    { id: "security", label: "Security and Sessions", icon: Lock }
   ];
 
-  const integrationTabs = [
-    { id: "local_db", label: "Local Database Sync", icon: Activity },
+  const integrationTabs: SettingsTabItem[] = [
     { id: "vault", label: "AI Prompt Vault", icon: ShieldCheck, badge: "BETA" }
   ];
 
-  const billingTabs = [
-    { id: "subscription", label: "Study Tier", icon: CreditCard },
-    { id: "usage", label: "Academic Usage", icon: Clock }
+  const billingTabs: SettingsTabItem[] = [
+    { id: "subscription", label: "Study Tier", icon: CreditCard }
   ];
 
-  return (
-    <div className="flex flex-col lg:flex-row gap-8 pb-12 w-full text-[#0D0D0D] righteous-regular relative min-h-[600px] animate-fadeIn">
+  const allSettingsTabs: SettingsTabItem[] = [...configTabs, ...integrationTabs, ...billingTabs];
+
+  const handleTabClick = (tabId: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    setActiveSubTab(tabId);
+    const container = scrollTabsRef.current;
+    const button = e.currentTarget;
+    if (container && button) {
+      const containerWidth = container.clientWidth;
+      const buttonLeft = button.offsetLeft;
+      const buttonWidth = button.clientWidth;
+      const targetScrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
       
-      {/* LEFT COLUMN: THE SIDEBAR */}
-      <div className="w-full lg:w-64 shrink-0 bg-[#F0EDF7] border border-[#C8CED6] rounded-3xl p-5 shadow-sm space-y-6 self-start">
-        <div className="space-y-6">
+      container.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: "smooth"
+      });
+    }
+    setTimeout(checkTabScroll, 350);
+  };
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 pb-12 w-full max-w-full overflow-x-hidden text-[#0D0D0D] relative min-h-[600px] animate-fadeIn">
+      
+      {/* MOBILE SCROLLABLE TAB STRIP (AUTOMATIC CENTER ALIGNMENT) */}
+      <div className="lg:hidden w-full max-w-full flex items-center gap-2 pb-2 px-0">
+        <div
+          ref={scrollTabsRef}
+          onScroll={checkTabScroll}
+          className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 scroll-smooth"
+        >
+          {allSettingsTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeSubTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={(e) => handleTabClick(tab.id, e)}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all duration-300 flex items-center gap-2 cursor-pointer border ${
+                  isActive
+                    ? "bg-[#433075] text-[#FAFAFA] border-[#A58CF4] shadow-md"
+                    : "bg-white/90 text-[#4B5563] border-[#C8CED6]/60 hover:bg-white hover:text-[#433075]"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+                {"badge" in tab && tab.badge && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-400 text-[#0D0D0D]">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* CLEVER ">>" SCROLL SYMBOL BUTTON INLINE */}
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={() => {
+              if (scrollTabsRef.current) {
+                scrollTabsRef.current.scrollBy({ left: 160, behavior: "smooth" });
+              }
+            }}
+            className="shrink-0 p-2.5 rounded-2xl bg-[#433075] text-[#FAFAFA] border border-[#A58CF4] shadow-md hover:bg-[#352560] active:scale-90 transition-all cursor-pointer flex items-center justify-center"
+            title="Scroll tabs right"
+          >
+            <ChevronsRight className="w-4 h-4 text-[#A58CF4]" />
+          </button>
+        )}
+      </div>
+
+      {/* LEFT COLUMN: THE SIDEBAR (DESKTOP ONLY) */}
+      <div className="hidden lg:block w-72 shrink-0 bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-8 self-start lg:sticky lg:top-6 z-10 overflow-hidden relative">
+        {/* Subtle Background SVG Accents */}
+        <Settings className="absolute -top-10 -right-10 w-40 h-40 text-[#433075]/5 pointer-events-none rotate-45" />
+
+        <div className="space-y-8 relative z-10">
           
           {/* Section 1: CONFIGURATION */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-black uppercase text-[#736A86] tracking-wider px-2.5">
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-black uppercase text-[#A58CF4] tracking-widest px-3 flex items-center gap-2">
+              <div className="w-1 h-1 rounded-full bg-[#A58CF4]" />
               Configuration
             </h4>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {configTabs.map((tab) => {
                 const Icon = tab.icon;
+                const isActive = activeSubTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveSubTab(tab.id)}
-                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2.5 cursor-pointer ${
-                      activeSubTab === tab.id
-                        ? "bg-[#433075] text-[#FAFAFA] shadow-sm"
-                        : "text-[#0D0D0D] hover:bg-white/50 hover:text-[#433075]"
+                    className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-3 cursor-pointer group relative overflow-hidden ${
+                      isActive
+                        ? "bg-gradient-to-r from-[#433075] to-[#272A3B] text-[#FAFAFA] shadow-md shadow-[#433075]/20"
+                        : "bg-transparent text-[#736A86] hover:bg-white hover:text-[#433075] hover:shadow-sm"
                     }`}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{tab.label}</span>
+                    {isActive && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />}
+                    <Icon className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110"}`} />
+                    <span className="relative z-10">{tab.label}</span>
                   </button>
                 );
               })}
@@ -445,29 +801,34 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
           </div>
 
           {/* Section 2: INTEGRATIONS */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-black uppercase text-[#736A86] tracking-wider px-2.5">
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-black uppercase text-[#A58CF4] tracking-widest px-3 flex items-center gap-2">
+              <div className="w-1 h-1 rounded-full bg-[#A58CF4]" />
               Integrations
             </h4>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {integrationTabs.map((tab) => {
                 const Icon = tab.icon;
+                const isActive = activeSubTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveSubTab(tab.id)}
-                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-between cursor-pointer ${
-                      activeSubTab === tab.id
-                        ? "bg-[#433075] text-[#FAFAFA] shadow-sm"
-                        : "text-[#0D0D0D] hover:bg-white/50 hover:text-[#433075]"
+                    className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-black transition-all duration-300 flex items-center justify-between cursor-pointer group relative overflow-hidden ${
+                      isActive
+                        ? "bg-gradient-to-r from-[#433075] to-[#272A3B] text-[#FAFAFA] shadow-md shadow-[#433075]/20"
+                        : "bg-transparent text-[#736A86] hover:bg-white hover:text-[#433075] hover:shadow-sm"
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="w-4 h-4 shrink-0" />
+                    {isActive && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />}
+                    <div className="flex items-center gap-3 relative z-10">
+                      <Icon className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110"}`} />
                       <span>{tab.label}</span>
                     </div>
                     {tab.badge && (
-                      <span className="text-[8px] bg-amber-400 text-black font-black px-1.5 py-0.5 rounded leading-none">
+                      <span className={`text-[9px] font-black px-2 py-1 rounded-md leading-none shadow-sm relative z-10 transition-colors duration-300 ${
+                        isActive ? "bg-amber-400 text-[#0D0D0D]" : "bg-indigo-50 border border-indigo-100 text-[#433075]"
+                      }`}>
                         {tab.badge}
                       </span>
                     )}
@@ -478,38 +839,41 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
           </div>
 
           {/* Section 3: BILLING */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-black uppercase text-[#736A86] tracking-wider px-2.5">
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-black uppercase text-[#A58CF4] tracking-widest px-3 flex items-center gap-2">
+              <div className="w-1 h-1 rounded-full bg-[#A58CF4]" />
               Billing
             </h4>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {billingTabs.map((tab) => {
                 const Icon = tab.icon;
+                const isActive = activeSubTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveSubTab(tab.id)}
-                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2.5 cursor-pointer ${
-                      activeSubTab === tab.id
-                        ? "bg-[#433075] text-[#FAFAFA] shadow-sm"
-                        : "text-[#0D0D0D] hover:bg-white/50 hover:text-[#433075]"
+                    className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-3 cursor-pointer group relative overflow-hidden ${
+                      isActive
+                        ? "bg-gradient-to-r from-[#433075] to-[#272A3B] text-[#FAFAFA] shadow-md shadow-[#433075]/20"
+                        : "bg-transparent text-[#736A86] hover:bg-white hover:text-[#433075] hover:shadow-sm"
                     }`}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{tab.label}</span>
+                    {isActive && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />}
+                    <Icon className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110"}`} />
+                    <span className="relative z-10">{tab.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Sign Out (immediately under Billing items) */}
-          <div className="pt-4 border-t border-[#C8CED6]/60">
+          {/* Sign Out */}
+          <div className="pt-6 border-t border-[#C8CED6]/40 mt-4">
             <button
               onClick={onSignOut}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white font-black text-xs transition-all flex items-center gap-2.5 cursor-pointer"
+              className="w-full px-4 py-3.5 rounded-2xl bg-red-50 hover:bg-red-500 text-red-600 hover:text-white font-black text-xs transition-all duration-300 flex items-center gap-3 cursor-pointer group shadow-sm hover:shadow-md hover:shadow-red-500/20"
             >
-              <LogOut className="w-4 h-4 shrink-0" />
+              <LogOut className="w-4 h-4 shrink-0 group-hover:-translate-x-1 transition-transform duration-300" />
               <span>Sign Out Session</span>
             </button>
           </div>
@@ -518,26 +882,36 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
       </div>
 
       {/* RIGHT COLUMN: DYNAMIC PANEL DISPLAY */}
-      <div className="flex-1 min-w-0 space-y-6">
+      <div className="flex-1 min-w-0 w-full max-w-full space-y-6 overflow-x-hidden">
         
         {/* ==========================================
             TAB 1: GENERAL SETTINGS
             ========================================== */}
         {activeSubTab === "general" && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#0D0D0D] tracking-tight uppercase">
-                Scholar Settings
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            className="space-y-6 relative w-full"
+          >
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+              <Settings className="hidden sm:block absolute top-20 right-0 w-64 h-64 text-[#433075]/5 rotate-12 z-0" />
+            </div>
+            
+            <div className="space-y-2 relative z-10">
+              <h1 className="text-xl xs:text-2xl sm:text-4xl lg:text-5xl font-black text-[#0D0D0D] tracking-tight uppercase flex flex-wrap items-center gap-2 sm:gap-3">
+                Scholar <span className="text-[#A58CF4]">Settings</span>
               </h1>
-              <p className="text-xs sm:text-sm text-[#736A86] font-semibold leading-relaxed">
+              <p className="text-xs sm:text-base lg:text-lg text-[#736A86] font-extrabold leading-relaxed">
                 Profile details, daily learning target, and retention preferences.
               </p>
             </div>
 
             {/* Profile Avatar configuration Card */}
-            <div className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm p-6 sm:p-8 space-y-6">
-              <h3 className="text-base sm:text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3">
-                Scholar Profile Details
+            <div className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 p-6 sm:p-8 space-y-6 relative z-10">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
+                <User className="w-6 h-6 text-[#A58CF4]" />
+                <span>Scholar Profile Details</span>
               </h3>
               
               <div className="flex flex-col md:flex-row items-center gap-6">
@@ -560,7 +934,7 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                     className="absolute bottom-0 right-0 p-1.5 rounded-full bg-[#433075] hover:bg-[#A58CF4] border-2 border-white text-white hover:text-[#0D0D0D] shadow-md transition-all active:scale-90 cursor-pointer"
                     title="Change Profile Picture"
                   >
-                    <Camera className="w-3 h-3" />
+                    <Camera className="w-3.5 h-3.5" />
                   </button>
                   <input
                     type="file"
@@ -574,24 +948,24 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                 <div className="flex-1 w-full space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <span className="text-[10px] uppercase font-black text-[#736A86]">Scholar Username</span>
-                      <p className="text-xs font-extrabold text-[#0D0D0D] flex items-center gap-1.5 mt-0.5">
-                        <User className="w-4 h-4 text-[#A58CF4]" />
+                      <span className="text-xs sm:text-sm uppercase font-black text-[#736A86] tracking-wider">Scholar Username</span>
+                      <p className="text-sm sm:text-base font-black text-[#0D0D0D] flex items-center gap-1.5 mt-1">
+                        <User className="w-4.5 h-4.5 text-[#A58CF4]" />
                         <span>{initialUsername || userName || "Scholar"}</span>
                       </p>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-black text-[#736A86]">Email Address</span>
-                      <p className="text-xs font-extrabold text-[#0D0D0D] flex items-center gap-1.5 mt-0.5">
-                        <Mail className="w-4 h-4 text-[#A58CF4]" />
+                      <span className="text-xs sm:text-sm uppercase font-black text-[#736A86] tracking-wider">Email Address</span>
+                      <p className="text-sm sm:text-base font-black text-[#0D0D0D] flex items-center gap-1.5 mt-1">
+                        <Mail className="w-4.5 h-4.5 text-[#A58CF4]" />
                         <span>{userEmail}</span>
                       </p>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-black text-[#736A86]">Authorization Status</span>
-                      <p className="text-xs font-extrabold text-[#0D0D0D] flex items-center gap-1.5 mt-0.5">
-                        <ShieldCheck className="w-4 h-4 text-[#A58CF4]" />
-                        <span className="text-indigo-600">Verified Owner Scholar</span>
+                      <span className="text-xs sm:text-sm uppercase font-black text-[#736A86] tracking-wider">Authorization Status</span>
+                      <p className="text-sm sm:text-base font-black text-[#0D0D0D] flex items-center gap-1.5 mt-1">
+                        <ShieldCheck className="w-4.5 h-4.5 text-[#A58CF4]" />
+                        <span className="text-indigo-600 font-black">Verified Owner Scholar</span>
                       </p>
                     </div>
                   </div>
@@ -600,10 +974,11 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
             </div>
 
             {/* General settings Card */}
-            <div className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm overflow-hidden">
+            <form onSubmit={handleSaveProfile} className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 overflow-hidden relative z-10">
               <div className="p-6 sm:p-8 space-y-6">
-                <h3 className="text-base sm:text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3">
-                  Scholar profile settings
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
+                  <User className="w-6 h-6 text-[#A58CF4]" />
+                  <span>Scholar profile settings</span>
                 </h3>
 
                 {/* Grid Inputs */}
@@ -611,8 +986,8 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                   {/* Row 1: Scholar Name */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
                     <div className="space-y-0.5">
-                      <span className="text-xs font-black text-[#0D0D0D] block">Scholar name</span>
-                      <span className="text-[10px] text-[#736A86] font-semibold block">Displayed throughout the WordNest app.</span>
+                      <span className="text-sm sm:text-base font-black text-[#0D0D0D] block">Scholar name</span>
+                      <span className="text-xs sm:text-sm text-[#736A86] font-extrabold block">Displayed throughout the WordNest app.</span>
                     </div>
                     <div className="md:col-span-2">
                       <div className="relative flex items-center">
@@ -621,7 +996,7 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                           value={username}
                           readOnly={!isEditingName}
                           onChange={(e) => setUsername(e.target.value)}
-                          className={`w-full p-3 pr-10 rounded-xl border text-[#0D0D0D] font-bold text-xs outline-none focus:border-[#433075] placeholder:text-[#C8CED6] transition-all ${
+                          className={`w-full p-3.5 sm:p-4 pr-10 rounded-2xl border text-[#0D0D0D] font-black text-sm sm:text-base outline-none focus:border-[#433075] placeholder:text-[#C8CED6] transition-all ${
                             isEditingName 
                               ? "bg-white border-[#433075]" 
                               : "bg-[#F7F7F7] border-[#C8CED6] cursor-not-allowed select-none"
@@ -636,20 +1011,20 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                         <button
                           type="button"
                           onClick={() => setIsEditingName(!isEditingName)}
-                          className="absolute right-3 p-1 rounded-lg text-[#736A86] hover:text-[#433075] transition-colors cursor-pointer"
+                          className="absolute right-3.5 p-1 rounded-lg text-[#736A86] hover:text-[#433075] transition-colors cursor-pointer"
                           title={isEditingName ? "Editing Enabled" : "Edit Scholar Name"}
                         >
-                          <Pencil className={`w-3.5 h-3.5 ${isEditingName ? "text-[#433075] scale-110" : ""}`} />
+                          <Pencil className={`w-4 h-4 ${isEditingName ? "text-[#433075] scale-110" : ""}`} />
                         </button>
                       </div>
                       {isCheckingUsername && (
-                        <p className="text-[9px] text-[#736A86] font-bold mt-1 animate-pulse">Checking availability...</p>
+                        <p className="text-xs text-[#736A86] font-black mt-1 animate-pulse">Checking availability...</p>
                       )}
                       {usernameError && (
-                        <p className="text-[9px] text-red-500 font-bold mt-1">{usernameError}</p>
+                        <p className="text-xs text-red-500 font-black mt-1">{usernameError}</p>
                       )}
                       {usernameSuccess && (
-                        <p className="text-[9px] text-green-600 font-bold mt-1">Username is available!</p>
+                        <p className="text-xs text-green-600 font-black mt-1">Username is available!</p>
                       )}
                     </div>
                   </div>
@@ -657,29 +1032,29 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                   {/* Row 2: Scholar ID */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
                     <div className="space-y-0.5">
-                      <span className="text-xs font-black text-[#0D0D0D] block">Scholar ID</span>
-                      <span className="text-[10px] text-[#736A86] font-semibold block">Unique ID for Each Scholars</span>
+                      <span className="text-sm sm:text-base font-black text-[#0D0D0D] block">Scholar ID</span>
+                      <span className="text-xs sm:text-sm text-[#736A86] font-extrabold block">Unique ID for Each Scholars</span>
                     </div>
                     <div className="md:col-span-2 flex gap-2">
                       <input
                         type="text"
                         value={user?.id || ""}
                         readOnly
-                        className="flex-1 p-3 rounded-xl bg-[#F7F7F7]/60 border border-[#C8CED6] text-[#736A86] font-bold text-xs select-all outline-none"
+                        className="flex-1 p-3.5 sm:p-4 rounded-2xl bg-[#F7F7F7]/60 border border-[#C8CED6] text-[#736A86] font-black text-xs sm:text-sm select-all outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => handleCopyText(user?.id || "", "scholar_id")}
-                        className="px-4 py-2.5 rounded-xl border border-[#C8CED6] bg-white hover:bg-[#F7F7F7] text-xs font-black text-[#0D0D0D] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
+                        className="px-5 py-3 sm:py-3.5 rounded-2xl border border-[#C8CED6] bg-white hover:bg-[#F7F7F7] text-xs sm:text-sm font-black text-[#0D0D0D] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
                       >
                         {copiedId === "scholar_id" ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-green-600" />
+                            <Check className="w-4 h-4 text-green-600" />
                             <span>Copied</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-4 h-4" />
                             <span>Copy</span>
                           </>
                         )}
@@ -697,11 +1072,11 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                   type="button"
                   onClick={handleSaveUsername}
                   disabled={isSavingUsername || username === initialUsername || username.length < 3 || !!usernameError}
-                  className="px-5 py-2.5 rounded-xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 border border-transparent hover:border-[#0D0D0D]"
+                  className="px-6 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 border border-transparent hover:border-[#0D0D0D]"
                 >
                   {isSavingUsername ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Saving changes...</span>
                     </>
                   ) : (
@@ -709,25 +1084,26 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                   )}
                 </button>
               </div>
-            </div>
+            </form>
 
 
 
             {/* Interactive preferences pane inside General tab */}
-            <form onSubmit={handleSavePreferences} className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm p-6 sm:p-8 space-y-6">
-              <h3 className="text-base sm:text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3">
-                Learning Preferences & Streaks
+            <form onSubmit={handleSavePreferences} className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 p-6 sm:p-8 space-y-6 relative z-10">
+              <h3 className="text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-[#A58CF4]" />
+                <span>Learning Preferences and Streaks</span>
               </h3>
 
               <div className="space-y-4">
                 {/* Daily Goal Dropdown */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
                   <div className="space-y-0.5">
-                    <div className="text-xs font-black text-[#0D0D0D] flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-[#433075]" />
+                    <div className="text-sm sm:text-base font-black text-[#0D0D0D] flex items-center gap-1.5">
+                      <Clock className="w-4.5 h-4.5 text-[#433075]" />
                       <span>Daily Learning Target</span>
                     </div>
-                    <div className="text-[10px] text-[#736A86] font-semibold">Consolidates study metrics and streak reminders.</div>
+                    <div className="text-xs sm:text-sm text-[#736A86] font-extrabold">Consolidates study metrics and streak reminders.</div>
                   </div>
                   <CustomSelect
                     value={dailyTarget}
@@ -737,53 +1113,53 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                       { value: "30", label: "30 mins/day (Regular)" },
                       { value: "60", label: "60 mins/day (Intensive)" }
                     ]}
-                    className="w-full sm:w-56"
+                    className="w-full sm:w-64"
                   />
                 </div>
 
                 {/* Notification Toggles */}
-                <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
+                <div className="flex items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
                   <div className="space-y-0.5">
-                    <div className="text-xs font-black text-[#0D0D0D] flex items-center gap-1.5">
-                      <Bell className="w-4 h-4 text-[#433075]" />
+                    <div className="text-sm sm:text-base font-black text-[#0D0D0D] flex items-center gap-1.5">
+                      <Bell className="w-4.5 h-4.5 text-[#433075]" />
                       <span>Memory Spaced-Repetition Alerts</span>
                     </div>
-                     <div className="text-[10px] text-[#736A86] font-semibold">Notify when vocabulary study session consolidations are ready.</div>
+                     <div className="text-xs sm:text-sm text-[#736A86] font-extrabold">Notify when vocabulary study session consolidations are ready.</div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setNotifications(!notifications)}
-                    className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none shrink-0 ${
+                    className={`w-12 h-6.5 rounded-full transition-colors relative focus:outline-none shrink-0 ${
                       notifications ? "bg-[#433075]" : "bg-[#C8CED6]"
                     }`}
                   >
                     <span
-                      className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform left-1 ${
-                        notifications ? "transform translate-x-5" : ""
+                      className={`w-4.5 h-4.5 rounded-full bg-white absolute top-1 transition-transform left-1 ${
+                        notifications ? "transform translate-x-5.5" : ""
                       }`}
                     />
                   </button>
                 </div>
 
                 {/* Streak Reminders */}
-                <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
+                <div className="flex items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
                   <div className="space-y-0.5">
-                    <div className="text-xs font-black text-[#0D0D0D] flex items-center gap-1.5">
-                      <Flame className="w-4 h-4 text-[#433075]" />
+                    <div className="text-sm sm:text-base font-black text-[#0D0D0D] flex items-center gap-1.5">
+                      <Flame className="w-4.5 h-4.5 text-[#433075]" />
                       <span>Streak Defense Reminders</span>
                     </div>
-                    <div className="text-[10px] text-[#736A86] font-semibold">Send alerts before streak expiration timelines.</div>
+                    <div className="text-xs sm:text-sm text-[#736A86] font-extrabold">Send alerts before streak expiration timelines.</div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setStreakReminders(!streakReminders)}
-                    className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none shrink-0 ${
+                    className={`w-12 h-6.5 rounded-full transition-colors relative focus:outline-none shrink-0 ${
                       streakReminders ? "bg-[#433075]" : "bg-[#C8CED6]"
                     }`}
                   >
                     <span
-                      className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform left-1 ${
-                        streakReminders ? "transform translate-x-5" : ""
+                      className={`w-4.5 h-4.5 rounded-full bg-white absolute top-1 transition-transform left-1 ${
+                        streakReminders ? "transform translate-x-5.5" : ""
                       }`}
                     />
                   </button>
@@ -793,32 +1169,65 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
               <div className="flex justify-end pt-2">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs shadow-sm transition-all active:scale-95 cursor-pointer border border-transparent hover:border-[#0D0D0D]"
+                  className="px-6 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm shadow-md transition-all active:scale-95 cursor-pointer border border-transparent hover:border-[#0D0D0D]"
                 >
                   Save preferences
                 </button>
               </div>
             </form>
-          </div>
+
+            {/* Account Session & Sign Out Card */}
+            <div className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-rose-500/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-rose-500/60 transition-all duration-300 p-6 sm:p-8 space-y-4 relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-lg sm:text-xl font-black text-[#0D0D0D] flex items-center gap-2">
+                    <LogOut className="w-5 h-5 text-rose-500" />
+                    <span>Account Session Sign Out</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#736A86] font-medium">
+                    Securely sign out of your WordNest scholar account session on this device.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs sm:text-sm shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-rose-600 shrink-0"
+                >
+                  <LogOut className="w-4 h-4 text-white" />
+                  <span>Sign Out Account</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
 
         {/* ==========================================
             TAB 2: SECURITY & SESSIONS
             ========================================== */}
         {activeSubTab === "security" && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#0D0D0D] tracking-tight uppercase">
-                Security & Sessions
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            className="space-y-6 relative w-full"
+          >
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+              <ShieldCheck className="hidden sm:block absolute top-20 right-0 w-64 h-64 text-[#433075]/5 rotate-12 z-0" />
+            </div>
+            
+            <div className="space-y-2 relative z-10">
+              <h1 className="text-xl xs:text-2xl sm:text-4xl font-extrabold text-[#0D0D0D] tracking-tight uppercase flex flex-wrap items-center gap-2 sm:gap-3">
+                Security and <span className="text-[#A58CF4]">Sessions</span>
               </h1>
               <p className="text-xs sm:text-sm text-[#736A86] font-semibold leading-relaxed">
                 Manage account passwords, caching permissions, and authorized access keys.
               </p>
             </div>
 
-            <div className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm p-6 sm:p-8 space-y-6">
-              <h3 className="text-base sm:text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
-                <Lock className="w-5 h-5 text-[#433075]" />
+            <div className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 p-6 sm:p-8 space-y-6 relative z-10">
+              <h3 className="text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
+                <Key className="w-5 h-5 text-[#A58CF4]" />
                 <span>Account Security</span>
               </h3>
 
@@ -829,6 +1238,8 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                     <input
                       type="password"
                       placeholder="Enter new password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                       className="w-full p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] text-xs outline-none focus:border-[#433075]"
                     />
                   </div>
@@ -837,6 +1248,8 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                     <input
                       type="password"
                       placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       className="w-full p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] text-xs outline-none focus:border-[#433075]"
                     />
                   </div>
@@ -846,255 +1259,139 @@ export default function SettingsSection({ user, onSignOut, userName }: SettingsP
                   <span className="text-[10px] text-[#736A86] font-semibold">Active Session: Chrome on Windows 10 (IP: 192.168.1.41)</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      (window as any).wordnestNotify?.("Password Updated", "Password updates completed successfully.", "success");
-                    }}
-                    className="px-4 py-2 rounded-xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] text-xs font-black cursor-pointer shadow-sm"
+                    onClick={handleUpdatePassword}
+                    disabled={isUpdatingPassword}
+                    className="px-4 py-2 rounded-xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] text-xs font-black cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Update Password
+                    {isUpdatingPassword ? "Updating..." : "Update Password"}
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white border border-red-200 shadow-sm p-6 sm:p-8 space-y-4">
-              <h4 className="text-xs font-black uppercase text-red-600 tracking-wider">Danger Zone</h4>
+            <div className="rounded-[2rem] bg-red-50/50 backdrop-blur-xl border border-red-200 shadow-sm hover:shadow-md hover:border-red-400 transition-all duration-300 p-6 sm:p-8 space-y-4 relative z-10">
+              <h4 className="text-xs font-black uppercase text-red-600 tracking-wider flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4" />
+                Danger Zone
+              </h4>
               <p className="text-[11px] text-[#736A86] font-semibold leading-relaxed">
                 Delete your scholar profile, all custom decks, and study logs forever. This action is irreversible.
               </p>
               <button
                 type="button"
                 onClick={() => {
-                  (window as any).wordnestNotify?.("Account Deletion", "Account deletion request has been registered in the security audit logs.", "warning");
+                  setShowDeleteConfirm(true);
+                  setDeleteConfirmText("");
                 }}
                 className="px-4 py-2.5 rounded-xl bg-red-600 text-white font-black text-xs hover:bg-red-700 active:scale-95 transition-all shadow"
               >
                 Delete Profile and Data
               </button>
             </div>
-          </div>
+            </motion.div>
         )}
 
-        {/* ==========================================
-            TAB 3: LOCAL DATABASE SYNC
-            ========================================== */}
-        {activeSubTab === "local_db" && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#0D0D0D] tracking-tight uppercase">
-                Local Database Sync
-              </h1>
-              <p className="text-xs sm:text-sm text-[#736A86] font-semibold leading-relaxed">
-                Synchronize offline IndexedDB browser storage cache with cloud backups.
-              </p>
-            </div>
 
-            <div className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm p-6 sm:p-8 space-y-6">
-              <h3 className="text-base sm:text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
-                <HardDrive className="w-5 h-5 text-[#433075]" />
-                <span>Offline Storage Metrics</span>
-              </h3>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
-                    <span className="text-[10px] font-black uppercase text-[#736A86] block">Local Caching Usage</span>
-                    <span className="text-lg font-black text-[#0D0D0D] mt-0.5 block">124 KB (Stored logs & cards)</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6]">
-                    <span className="text-[10px] font-black uppercase text-[#736A86] block">Last Server Handshake</span>
-                    <span className="text-lg font-black text-[#0D0D0D] mt-0.5 block">1 minute ago (Synced)</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      (window as any).wordnestNotify?.("Cache Cleared", "Offline IndexedDB Cache cleared successfully. Reloading...", "success");
-                      setTimeout(() => {
-                        localStorage.clear();
-                        window.location.reload();
-                      }, 1200);
-                    }}
-                    className="px-4 py-2.5 rounded-xl border border-red-200 hover:bg-red-50 text-red-600 text-xs font-black cursor-pointer shadow-sm"
-                  >
-                    Wipe Local Cache
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowSuccessToast(true);
-                      setTimeout(() => setShowSuccessToast(false), 3000);
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] text-xs font-black cursor-pointer shadow-sm"
-                  >
-                    Trigger Sync Now
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ==========================================
             TAB 4: AI PROMPT VAULT
             ========================================== */}
         {activeSubTab === "vault" && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#0D0D0D] tracking-tight uppercase">
-                AI Prompt Vault
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            className="space-y-6 relative w-full"
+          >
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+              <Brain className="hidden sm:block absolute top-20 right-0 w-64 h-64 text-[#433075]/5 rotate-12 z-0" />
+            </div>
+
+            <div className="space-y-2 relative z-10">
+              <h1 className="text-xl xs:text-2xl sm:text-4xl font-extrabold text-[#0D0D0D] tracking-tight uppercase flex flex-wrap items-center gap-2 sm:gap-3">
+                AI Prompt <span className="text-[#A58CF4]">Vault</span>
               </h1>
               <p className="text-xs sm:text-sm text-[#736A86] font-semibold leading-relaxed">
                 Customize prompts used by the AI Grader to evaluate sentence structure and grammar.
               </p>
             </div>
 
-            <div className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm p-6 sm:p-8 space-y-6">
-              <h3 className="text-base sm:text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
-                <Brain className="w-5 h-5 text-[#433075]" />
+            <div className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 p-6 sm:p-8 space-y-6 relative z-10">
+              <h3 className="text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3 flex items-center gap-2">
+                <Terminal className="w-5 h-5 text-[#A58CF4]" />
                 <span>Grader Prompt Customization</span>
               </h3>
 
               <div className="space-y-4">
-                <span className="text-xs font-black text-[#0D0D0D] block">System Evaluator Prompts</span>
+                <span className="text-sm sm:text-base font-black text-[#0D0D0D] block">System Evaluator Prompts</span>
                 <textarea
                   readOnly
                   rows={6}
-                  className="w-full p-3.5 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] text-[#736A86] font-mono text-[10px] outline-none resize-none cursor-not-allowed leading-relaxed select-all"
+                  className="w-full p-4 sm:p-5 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6] text-[#433075] font-mono text-xs sm:text-sm font-black outline-none resize-none cursor-not-allowed leading-relaxed select-all shadow-inner"
                   value={`You are the WordNest AI Sentence Evaluator. The user is learning a vocabulary word. 
 Evaluate if the sentence is grammatically correct and contextually appropriate.
 Grade their usage out of 100, analyze parts of speech, and provide suggestions.`}
                 />
-                <span className="text-[10px] text-[#736A86] font-semibold block">Custom prompt edits are locked in Beta.</span>
+                <span className="text-xs sm:text-sm text-[#736A86] font-extrabold block">Custom prompt edits are locked in Beta.</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* ==========================================
             TAB 5: STUDY TIER SUBSCRIPTION
             ========================================== */}
         {activeSubTab === "subscription" && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#0D0D0D] tracking-tight uppercase">
-                Study Tier Subscription
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            className="space-y-6 relative w-full"
+          >
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+              <CreditCard className="hidden sm:block absolute top-20 right-0 w-64 h-64 text-[#433075]/5 rotate-12 z-0" />
+            </div>
+
+            <div className="space-y-2 relative z-10">
+              <h1 className="text-xl xs:text-2xl sm:text-4xl font-extrabold text-[#0D0D0D] tracking-tight uppercase flex flex-wrap items-center gap-2 sm:gap-3">
+                Study Tier <span className="text-[#A58CF4]">Subscription</span>
               </h1>
               <p className="text-xs sm:text-sm text-[#736A86] font-semibold leading-relaxed">
                 Billing details, study tier ceilings, and premium upgrade paths.
               </p>
             </div>
 
-            <div className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 p-6 sm:p-8 space-y-6 relative z-10">
               <div className="flex items-center justify-between border-b border-[#C8CED6]/40 pb-3">
-                <h3 className="text-base sm:text-lg font-black text-[#0D0D0D]">Current study tier</h3>
+                <h3 className="text-lg font-black text-[#0D0D0D] flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-[#A58CF4]" />
+                  <span>Current study tier</span>
+                </h3>
                 <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[#433075] text-[10px] font-black uppercase tracking-wider">
                   Active tier
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex justify-center">
                 {/* Free Tier Card */}
-                <div className="p-6 rounded-2xl bg-[#F7F7F7] border-2 border-[#433075] space-y-4">
+                <div className="p-6 rounded-2xl bg-[#F7F7F7] border-2 border-[#433075] space-y-4 max-w-md w-full">
                   <div className="space-y-1">
                     <span className="text-xs font-black text-[#433075] uppercase block">Scholar Free Tier</span>
                     <h4 className="text-2xl font-black text-[#0D0D0D]">$0 <span className="text-xs font-bold text-[#736A86]">/ month</span></h4>
                   </div>
                   <p className="text-[11px] text-[#736A86] leading-relaxed font-semibold">
-                     Access custom learning decks, memory spaced repetition arena, and spelling tests.
+                     Access custom learning decks, memory spaced recall arena, and spelling tests.
                   </p>
                   <div className="pt-2 text-[10px] text-green-600 font-extrabold flex items-center gap-1">
                     <Check className="w-3.5 h-3.5" />
                     <span>Free Lifetime Account Active</span>
                   </div>
                 </div>
-
-                {/* Premium Upgrade Tier */}
-                <div className="p-6 rounded-2xl bg-white border border-[#C8CED6] space-y-4 flex flex-col justify-between">
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-[#A58CF4] uppercase block">Scholar Pro</span>
-                        <span className="text-[8px] bg-amber-400 text-black font-black px-1.5 py-0.5 rounded leading-none">Popular</span>
-                      </div>
-                      <h4 className="text-2xl font-black text-[#0D0D0D]">$8 <span className="text-xs font-bold text-[#736A86]">/ month</span></h4>
-                    </div>
-                    <p className="text-[11px] text-[#736A86] leading-relaxed font-semibold">
-                      Unlock full AI evaluator metrics, custom deck image generations, unlimited offline-sync, and custom HSL accent configurations.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => (window as any).wordnestNotify?.("Portal Registration", "Billing upgrade payment portal integration details will follow shortly.", "info")}
-                    className="w-full py-3 rounded-xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-md border border-transparent hover:border-[#0D0D0D]"
-                  >
-                    <span>Upgrade to Pro</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
-        {/* ==========================================
-            TAB 6: ACADEMIC RESOURCE USAGE
-            ========================================== */}
-        {activeSubTab === "usage" && (
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#0D0D0D] tracking-tight uppercase">
-                Academic Usage
-              </h1>
-              <p className="text-xs sm:text-sm text-[#736A86] font-semibold leading-relaxed">
-                Quota consumption levels, API calls, and local profile metrics.
-              </p>
-            </div>
-
-            <div className="rounded-3xl bg-white border border-[#C8CED6] shadow-sm p-6 sm:p-8 space-y-6">
-              <h3 className="text-base sm:text-lg font-black text-[#0D0D0D] border-b border-[#C8CED6]/40 pb-3">
-                Monthly limits
-              </h3>
-
-              <div className="space-y-6">
-                {/* Metric 1 */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-black">
-                    <span className="text-[#0D0D0D]">Custom flashcards created</span>
-                    <span className="text-[#736A86]">26 / 500 cards</span>
-                  </div>
-                  <div className="w-full h-3 bg-[#F7F7F7] rounded-full overflow-hidden border border-[#C8CED6]">
-                    <div className="h-full bg-gradient-to-r from-[#433075] to-[#A58CF4]" style={{ width: "5.2%" }} />
-                  </div>
-                </div>
-
-                {/* Metric 2 */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-black">
-                    <span className="text-[#0D0D0D]">AI Sentence Evaluations</span>
-                    <span className="text-[#736A86]">12 / 50 runs</span>
-                  </div>
-                  <div className="w-full h-3 bg-[#F7F7F7] rounded-full overflow-hidden border border-[#C8CED6]">
-                    <div className="h-full bg-gradient-to-r from-[#433075] to-[#A58CF4]" style={{ width: "24%" }} />
-                  </div>
-                </div>
-
-                {/* Metric 3 */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-black">
-                    <span className="text-[#0D0D0D]">Audio Syntheses (Text-to-Speech)</span>
-                    <span className="text-[#736A86]">42 / 200 items</span>
-                  </div>
-                  <div className="w-full h-3 bg-[#F7F7F7] rounded-full overflow-hidden border border-[#C8CED6]">
-                    <div className="h-full bg-gradient-to-r from-[#433075] to-[#A58CF4]" style={{ width: "21%" }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
 
@@ -1202,6 +1499,61 @@ Grade their usage out of 100, analyze parts of speech, and provide suggestions.`
                       <span>Upload</span>
                     </>
                   )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Account Deletion Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white p-6 rounded-3xl shadow-2xl max-w-md w-full border border-red-200 text-center space-y-5 "
+            >
+              <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Lock className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-black text-red-600 uppercase">Confirm Account Deletion</h3>
+                <p className="text-xs text-[#736A86] leading-relaxed">
+                  This action is permanent and irreversible. Your profile, custom study decks, learning history, and AI session logs will be completely wiped from the system.
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase text-[#736A86] block text-left">
+                  Type <span className="text-red-600 font-extrabold select-all">DELETE</span> to confirm permission:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE"
+                  className="w-full p-3 rounded-xl border border-[#C8CED6] text-[#0D0D0D] font-bold text-xs outline-none focus:border-red-500 text-center placeholder:text-[#C8CED6] transition-all bg-[#FAFAFA]"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="w-1/2 py-2.5 rounded-xl border border-[#C8CED6] hover:bg-[#F7F7F7] text-[#736A86] font-black text-xs transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== "DELETE"}
+                  className="w-1/2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-all cursor-pointer shadow-lg disabled:opacity-40 disabled:cursor-not-allowed border border-transparent hover:border-red-700"
+                >
+                  Delete Account
                 </button>
               </div>
             </motion.div>

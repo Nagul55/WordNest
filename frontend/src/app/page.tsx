@@ -6,6 +6,7 @@ import { supabase, syncUserProfile } from "@/lib/supabase";
 import { Lock, Mail, User, AlertCircle, CheckCircle2, ArrowRight, ShieldCheck, LogOut, Loader2, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Dashboard from "@/components/Dashboard";
+import OnboardingFlow from "@/components/OnboardingFlow";
 
 const WordNestLogoHeader = () => {
   return (
@@ -69,18 +70,50 @@ export default function AuthPortalPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Authenticated User Session
+  // Authenticated User Session & Profile Onboarding State
   const [activeSession, setActiveSession] = useState<any | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState<boolean>(false);
   const [imgError, setImgError] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  const checkUserProfileAndOnboarding = async (user: any) => {
+    if (!user) {
+      setUserProfile(null);
+      setNeedsOnboarding(false);
+      return;
+    }
+    try {
+      await syncUserProfile(user);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile) {
+        setUserProfile(profile);
+        if (!profile.onboarding_completed) {
+          setNeedsOnboarding(true);
+        } else {
+          setNeedsOnboarding(false);
+        }
+      } else {
+        setNeedsOnboarding(true);
+      }
+    } catch (e) {
+      console.warn("Notice: Error checking user profile onboarding state:", e);
+      setNeedsOnboarding(false);
+    }
+  };
 
   // Listen to Supabase Auth State on load
   useEffect(() => {
     let sessionChecked = false;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         setActiveSession(session);
-        syncUserProfile(session.user);
+        await checkUserProfileAndOnboarding(session.user);
       }
       sessionChecked = true;
     });
@@ -88,7 +121,10 @@ export default function AuthPortalPage() {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setActiveSession(session);
       if (session?.user) {
-        await syncUserProfile(session.user);
+        await checkUserProfileAndOnboarding(session.user);
+      } else {
+        setUserProfile(null);
+        setNeedsOnboarding(false);
       }
       sessionChecked = true;
     });
@@ -265,12 +301,46 @@ export default function AuthPortalPage() {
 
       {!isInitialLoading && (
         activeSession ? (
-          <Dashboard user={activeSession.user} onSignOut={handleSignOut} />
+          <AnimatePresence mode="wait">
+            {needsOnboarding ? (
+              <motion.div
+                key="onboarding-stepper"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ 
+                  opacity: 0, 
+                  scale: 0.97,
+                  filter: "blur(10px) brightness(0.2)",
+                  transition: { duration: 0.9, ease: [0.4, 0, 0.2, 1] } 
+                }}
+                className="w-full h-full min-h-screen"
+              >
+                <OnboardingFlow
+                  user={activeSession.user}
+                  initialProfile={userProfile}
+                  onComplete={async () => {
+                    setNeedsOnboarding(false);
+                    await checkUserProfileAndOnboarding(activeSession.user);
+                  }}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="dashboard-view"
+                initial={{ opacity: 0, scale: 0.98, filter: "blur(8px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="w-full h-full min-h-screen"
+              >
+                <Dashboard user={activeSession.user} onSignOut={handleSignOut} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         ) : (
-          <div className="h-screen w-full flex flex-col md:flex-row bg-[#0D0D0D] relative overflow-hidden righteous-regular">
+          <div className="min-h-[100dvh] h-full w-full flex flex-col md:flex-row bg-[#0D0D0D] relative overflow-y-auto md:overflow-hidden">
       
       {/* Floating 2-second Toast Notifications */}
-      <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
+      <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50 flex flex-col gap-3 pointer-events-none max-w-[calc(100vw-2rem)]">
         <AnimatePresence>
           {errorMsg && (
             <motion.div
@@ -306,7 +376,7 @@ export default function AuthPortalPage() {
       </div>
 
       {/* RIGHT HEMISPHERE (40% WIDTH): AUTHENTICATION CONSOLE */}
-      <div className="w-full md:w-[40%] h-full flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-4 bg-[#0D0D0D] relative z-10 overflow-hidden">
+      <div className="w-full md:w-[40%] min-h-full flex flex-col justify-center px-5 sm:px-10 lg:px-16 py-6 bg-[#0D0D0D] relative z-10 overflow-y-auto">
         
         <div className="w-full max-w-sm mx-auto flex flex-col justify-center h-full">
           

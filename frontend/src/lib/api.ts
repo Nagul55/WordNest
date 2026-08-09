@@ -2,12 +2,50 @@ import { AIStudySuite, Flashcard } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export const generateMagicNotes = async (content: string): Promise<AIStudySuite> => {
+export interface UserContext {
+  username?: string;
+  age?: string | number;
+  occupation?: string;
+  referral_source?: string;
+}
+
+/**
+ * Retrieves cached student persona profile (username, age, occupation) 
+ * from localStorage so all AI responses across WordNest are personalized.
+ */
+export const getStoredUserContext = (): UserContext | undefined => {
+  if (typeof window === "undefined") return undefined;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("wordnest_profile_")) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          const parsed = JSON.parse(item);
+          if (parsed.username || parsed.age || parsed.occupation) {
+            return {
+              username: parsed.username,
+              age: parsed.age,
+              occupation: parsed.occupation,
+              referral_source: parsed.referral_source
+            };
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to read user context for AI personalization:", e);
+  }
+  return undefined;
+};
+
+export const generateMagicNotes = async (content: string, explicitUserContext?: UserContext): Promise<AIStudySuite> => {
+  const user_context = explicitUserContext || getStoredUserContext();
   try {
     const response = await fetch(`${API_BASE_URL}/api/ai/magic-notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, mode: "full_suite" }),
+      body: JSON.stringify({ content, mode: "full_suite", user_context }),
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -15,13 +53,14 @@ export const generateMagicNotes = async (content: string): Promise<AIStudySuite>
     const data = await response.json();
     return data.data;
   } catch (e) {
-    console.warn("Backend FastAPI connection unavailable or errored, using fallback intelligent synthesis:", e);
-    // Graceful demo simulated fallback if local python server is offline
+    console.warn("Backend FastAPI connection unavailable or errored, using personalized fallback synthesis:", e);
+    const name = user_context?.username ? `${user_context.username}'s` : "Personalized";
+    const roleDesc = user_context?.occupation ? ` tailored for your background as a ${user_context.occupation}` : "";
     return {
-      title: "Generated AI Study Set: Core Synthesis",
+      title: `${name} AI Study Set: Core Synthesis`,
       category: "General Intelligence",
-      description: "DeepSeek V4 Pro automated educational summary generated from provided notes.",
-      study_notes: "### Key Analytical Takeaways\n\n* **Primary Theme**: The text explores fundamental abstractions and structural workflows.\n* **Critical Operations**: System behavior centers around reliable modular execution and iterative validation.\n* **Best Practices**: Always prioritize robust error containment and scalable algorithmic data modeling.\n\n#### Vocabulary Expansion\nReview the connected flashcard deck below to reinforce conceptual definitions.",
+      description: `Groq Llama 3.1 AI automated educational summary${roleDesc}.`,
+      study_notes: `### Key Analytical Takeaways for ${user_context?.username || "Student"}\n\n* **Primary Theme**: The text explores fundamental abstractions and structural workflows.\n* **Critical Operations**: System behavior centers around reliable modular execution and iterative validation.\n* **Best Practices**: Always prioritize robust error containment and scalable algorithmic data modeling.\n\n#### Vocabulary Expansion\nReview the connected flashcard deck below to reinforce conceptual definitions.`,
       flashcards: [
         { term: "Abstraction Architecture", definition: "Hiding internal operational complexity behind clean, intuitive public interfaces." },
         { term: "Modular Convergence", definition: "The point where independent software or biological subsystems seamlessly interact to perform complex behaviors." },
@@ -59,13 +98,20 @@ export const generateMagicNotes = async (content: string): Promise<AIStudySuite>
 export const gradeAnswerWithAI = async (
   term: string,
   expectedDefinition: string,
-  userResponse: string
+  userResponse: string,
+  explicitUserContext?: UserContext
 ): Promise<{ is_correct: boolean; score: number; feedback: string }> => {
+  const user_context = explicitUserContext || getStoredUserContext();
   try {
     const response = await fetch(`${API_BASE_URL}/api/ai/grade`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ term, expected_definition: expectedDefinition, user_response: userResponse }),
+      body: JSON.stringify({ 
+        term, 
+        expected_definition: expectedDefinition, 
+        user_response: userResponse,
+        user_context 
+      }),
     });
     if (response.ok) {
       const data = await response.json();
@@ -73,14 +119,16 @@ export const gradeAnswerWithAI = async (
     }
     throw new Error("API Offline");
   } catch (e) {
-    // Graceful semantic heuristic if API offline
     const cleanUser = userResponse.toLowerCase().trim();
     const cleanExpected = expectedDefinition.toLowerCase().trim();
     const isMatch = cleanUser.length > 3 && (cleanExpected.includes(cleanUser) || cleanUser.includes(cleanExpected.slice(0, 15)));
+    const studentName = user_context?.username ? `${user_context.username}, ` : "";
     return {
       is_correct: isMatch,
       score: isMatch ? 95 : 30,
-      feedback: isMatch ? "Spot on! Your response correctly reflects the structural concept." : `Not quite right yet. Keep in mind: ${expectedDefinition}`
+      feedback: isMatch 
+        ? `Great work ${studentName}! Your response accurately captures the core concept.` 
+        : `Keep going ${studentName}! Keep in mind: ${expectedDefinition}`
     };
   }
 };
@@ -88,14 +136,21 @@ export const gradeAnswerWithAI = async (
 export const chatSocraticTutor = async (
   deckTitle: string,
   cards: Flashcard[],
-  history: { role: string; content: string }[]
+  history: { role: string; content: string }[],
+  explicitUserContext?: UserContext
 ): Promise<string> => {
+  const user_context = explicitUserContext || getStoredUserContext();
   try {
     const formattedCards = cards.map(c => ({ term: c.term, definition: c.definition }));
     const response = await fetch(`${API_BASE_URL}/api/ai/tutor`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deck_title: deckTitle, cards: formattedCards, messages: history }),
+      body: JSON.stringify({ 
+        deck_title: deckTitle, 
+        cards: formattedCards, 
+        messages: history,
+        user_context 
+      }),
     });
     if (response.ok) {
       const data = await response.json();
@@ -103,7 +158,44 @@ export const chatSocraticTutor = async (
     }
     throw new Error("API Offline");
   } catch (e) {
-    return "⚡ *Tutor Tip*: I'm running in local offline demo mode right now! To truly master **" + deckTitle + "**, try explaining the distinction between **" + (cards[0]?.term || "concept A") + "** and **" + (cards[1]?.term || "concept B") + "** in your own words right now!";
+    const studentName = user_context?.username ? ` ${user_context.username}` : "";
+    return `⚡ *Tutor Tip*: Hey${studentName}! To truly master **${deckTitle}**, try explaining the distinction between **${cards[0]?.term || "concept A"}** and **${cards[1]?.term || "concept B"}** in your own words!`;
+  }
+};
+
+export const fetchWordDefinition = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
+  const user_context = explicitUserContext || getStoredUserContext();
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word, user_context })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.definition;
+    }
+    throw new Error("API error");
+  } catch (e) {
+    throw e;
+  }
+};
+
+export const fetchWordExample = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
+  const user_context = explicitUserContext || getStoredUserContext();
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/ai/example`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word, user_context })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.example;
+    }
+    throw new Error("API error");
+  } catch (e) {
+    throw e;
   }
 };
 

@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   username TEXT UNIQUE,
   full_name TEXT,
   avatar_url TEXT,
+  age TEXT,
+  occupation TEXT,
+  referral_source TEXT,
+  onboarding_completed BOOLEAN DEFAULT FALSE,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

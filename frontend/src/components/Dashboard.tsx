@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { 
   Flame,
@@ -24,6 +24,7 @@ import SettingsSection from "./dashboard/SettingsSection";
 import DecksSection from "./dashboard/DecksSection";
 import PracticeSection from "./dashboard/PracticeSection";
 import StaggeredMenu from "./StaggeredMenu";
+import { supabase } from "@/lib/supabase";
 
 interface DashboardProps {
   user: any;
@@ -138,27 +139,71 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
       }));
     };
 
-    // Push initial welcome notification
-    const welcomeTimer = setTimeout(() => {
-      (window as any).wordnestNotify?.(
-        "Welcome to WordNest!",
-        "Your offline spaced-repetition dictionary is active and ready.",
-        "update"
-      );
-    }, 1500);
+    // Push initial welcome notification once per session
+    const welcomeSessionKey = `wordnest_welcome_${user?.id || "guest"}`;
+    let welcomeTimer: any = null;
+    
+    if (!sessionStorage.getItem(welcomeSessionKey)) {
+      welcomeTimer = setTimeout(() => {
+        (window as any).wordnestNotify?.(
+          "Welcome to WordNest!",
+          "Your offline spaced-repetition dictionary is active and ready.",
+          "update"
+        );
+        sessionStorage.setItem(welcomeSessionKey, "true");
+      }, 1500);
+    }
 
     return () => {
       window.removeEventListener("wordnest-notification" as any, handleNewNotification);
       delete (window as any).wordnestNotify;
-      clearTimeout(welcomeTimer);
+      if (welcomeTimer) clearTimeout(welcomeTimer);
     };
-  }, []);
+  }, [user?.id]);
 
   const [activeTab, setActiveTab] = useState<NavSection>("home");
   const [practiceSubTab, setPracticeSubTab] = useState<"vocabulary" | "ailabs" | "flashcards">("vocabulary");
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // Global Staggered Prefetching States
+  const [prefetchedDecks, setPrefetchedDecks] = useState<any[] | null>(null);
+  const [prefetchedSessions, setPrefetchedSessions] = useState<any[] | null>(null);
+  const [prefetchedVocab, setPrefetchedVocab] = useState<any[] | null>(null);
+  const [prefetchedFlashcards, setPrefetchedFlashcards] = useState<any[] | null>(null);
+
+  const prefetchAllData = React.useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const [decksRes, sessionsRes, vocabRes, flashcardsRes] = await Promise.all([
+        supabase.from("study_sets").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
+        supabase.from("practice_sessions").select("*").eq("user_id", user.id),
+        supabase.from("vocabulary_vault").select("*").eq("user_id", user.id),
+        supabase.from("flashcards").select("*").eq("user_id", user.id)
+      ]);
+
+      setPrefetchedDecks(decksRes.data || []);
+      setPrefetchedSessions(sessionsRes.data || []);
+      setPrefetchedVocab(vocabRes.data || []);
+      setPrefetchedFlashcards(flashcardsRes.data || []);
+    } catch (e) {
+      console.warn("Notice: Staggered prefetch failed to load database records", e);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    prefetchAllData();
+
+    const handleDataChanged = () => {
+      prefetchAllData();
+    };
+
+    window.addEventListener("wordnest-data-changed", handleDataChanged);
+    return () => {
+      window.removeEventListener("wordnest-data-changed", handleDataChanged);
+    };
+  }, [user?.id, prefetchAllData]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     setIsScrolled(e.currentTarget.scrollTop > 10);
@@ -175,6 +220,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
 
   const handleTabChange = (tab: NavSection) => {
     setActiveTab(tab);
+    prefetchAllData(); // Re-sync latest database records on tab switch!
     const params = new URLSearchParams(window.location.search);
     params.set("tab", tab);
     window.history.pushState(null, "", "?" + params.toString() + window.location.hash);
@@ -215,9 +261,45 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // Derive display names safely from Supabase user object or defaults
+  // Derive display names dynamically from Supabase profiles table, auth metadata, or local storage cache
   const userEmail = user?.email || "";
-  const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || (userEmail ? userEmail.split("@")[0] : "") || "Scholar";
+  const defaultName = user?.user_metadata?.full_name || user?.user_metadata?.name || (userEmail ? userEmail.split("@")[0] : "") || "Scholar";
+  const [displayUserName, setDisplayUserName] = useState<string>(() => {
+    if (typeof window !== "undefined" && user?.id) {
+      const cached = localStorage.getItem(`wordnest_username_${user.id}`);
+      if (cached) return cached;
+    }
+    return defaultName;
+  });
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+
+    const syncProfileName = async () => {
+      try {
+        const { data } = await supabase.from("profiles").select("username, full_name").eq("id", user.id).maybeSingle();
+        if (data?.username || data?.full_name) {
+          const fetchedName = data.username || data.full_name;
+          setDisplayUserName(fetchedName);
+          localStorage.setItem(`wordnest_username_${user.id}`, fetchedName);
+        }
+      } catch (err) {
+        console.warn("Notice: Profile name sync warning:", err);
+      }
+    };
+
+    syncProfileName();
+
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail?.name) {
+        setDisplayUserName(e.detail.name);
+        localStorage.setItem(`wordnest_username_${user.id}`, e.detail.name);
+      }
+    };
+
+    window.addEventListener("wordnest-profile-updated" as any, handleProfileUpdated);
+    return () => window.removeEventListener("wordnest-profile-updated" as any, handleProfileUpdated);
+  }, [user?.id]);
 
   // Menu items list
   const menuItems = [
@@ -229,7 +311,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   ];
 
   return (
-    <div className="flex h-screen w-full bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6] text-[#0D0D0D] overflow-hidden righteous-regular relative">
+    <div className="flex h-screen w-full bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6] text-[#0D0D0D] overflow-hidden relative">
       
       {/* ==========================================
           MAIN AREA (FLOATING HEADER + SCROLLABLE CONTENT)
@@ -237,28 +319,28 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
       <div className="flex-1 flex flex-col h-full w-full min-w-0 bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6] overflow-hidden relative">
         
         {/* Floating header with dynamic background on scroll */}
-        <header className={`absolute top-0 left-0 right-0 px-6 z-30 transition-all duration-300 flex items-center justify-between ${
+        <header className={`absolute top-0 left-0 right-0 px-4 xs:px-6 sm:px-8 lg:px-10 z-30 transition-all duration-300 flex items-center justify-between ${
           isScrolled 
-            ? "bg-white/95 backdrop-blur-md border-b border-[#C8CED6]/60 shadow-sm py-4" 
-            : "bg-transparent py-7 border-b border-transparent shadow-none"
+            ? "bg-white/95 backdrop-blur-md border-b border-[#C8CED6]/60 shadow-sm py-3.5 sm:py-4" 
+            : "bg-transparent py-5 sm:py-7 border-b border-transparent shadow-none"
         }`}>
           
           {/* LEFT: Brand Logo & Aligned Title */}
           <div 
             onClick={scrollToTop}
-            className="flex items-center gap-2.5 select-none cursor-pointer"
+            className="flex items-center gap-2 sm:gap-2.5 select-none cursor-pointer shrink-0"
           >
-            <div className="w-10 h-10 relative shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 relative shrink-0">
               <Image src="/Wordnest.svg" alt="WordNest Application Logo" fill className="object-contain" priority />
             </div>
-            <div className="flex items-center tracking-tight leading-none pt-0.5 font-sans font-black">
-              <span className="text-2xl sm:text-[1.8rem] text-[#3B153A]">Word</span>
-              <span className="text-2xl sm:text-[1.8rem] text-[#F0C987]">Nest</span>
+            <div className="flex items-center tracking-tight leading-none pt-0.5 righteous-regular font-black">
+              <span className="text-lg xs:text-xl sm:text-[1.8rem] text-[#3B153A]">Word</span>
+              <span className="text-lg xs:text-xl sm:text-[1.8rem] text-[#F0C987]">Nest</span>
             </div>
           </div>
 
-          {/* RIGHT: Staggered Menu Toggle */}
-          <div className="flex items-center gap-4">
+          {/* RIGHT: Staggered Menu Toggle & Action Pair */}
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Custom keyframes style inject */}
             <style>{`
               @keyframes wiggle {
@@ -280,14 +362,14 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className={`p-2.5 rounded-xl border border-[#C8CED6] bg-white hover:bg-[#F7F7F7] text-[#0D0D0D] transition-all cursor-pointer relative active:scale-95 shadow-sm flex items-center justify-center ${
-                  showNotifications ? "bg-[#F0EDF7] border-[#433075] ring-2 ring-[#433075]/10" : ""
+                className={`p-2 sm:p-2.5 rounded-full sm:rounded-xl border border-[#C8CED6] bg-white/90 backdrop-blur-md hover:bg-[#F7F7F7] text-[#0D0D0D] transition-all cursor-pointer relative active:scale-95 shadow-sm flex items-center justify-center ${
+                  showNotifications ? "bg-[#F0EDF7] border-[#433075] ring-2 ring-[#433075]/20" : ""
                 }`}
                 title="View Notifications"
               >
                 <Bell className={`w-4 h-4 text-[#433075] ${bellWiggle ? "animate-wiggle text-amber-500" : ""}`} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[9px] font-black border border-white animate-pulse">
+                  <span className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 w-4 h-4 sm:w-5 sm:h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[9px] font-black border border-white animate-pulse">
                     {unreadCount}
                   </span>
                 )}
@@ -298,7 +380,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                   <>
                     {/* Backdrop to close dropdown on click outside */}
                     <div 
-                      className="fixed inset-0 z-40" 
+                      className="fixed inset-0 z-40 bg-black/20 sm:bg-transparent backdrop-blur-[2px] sm:backdrop-blur-none" 
                       onClick={() => setShowNotifications(false)}
                     />
                     
@@ -307,18 +389,18 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2.5 w-80 sm:w-96 bg-white border-2 border-[#433075] rounded-3xl shadow-2xl z-50 overflow-hidden text-[#0D0D0D] flex flex-col max-h-[480px]"
+                      className="fixed inset-x-4 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-auto sm:mt-2.5 w-auto sm:w-96 bg-white border-2 border-[#433075] rounded-3xl shadow-2xl z-50 overflow-hidden text-[#0D0D0D] flex flex-col max-h-[75vh] sm:max-h-[480px]"
                     >
                       {/* Header */}
                       <div className="p-4 bg-[#F0EDF7] border-b border-[#C8CED6]/60 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Bell className="w-4 h-4 text-[#433075]" />
-                          <span className="text-xs font-black text-[#0D0D0D] uppercase tracking-wide">Notifications</span>
+                          <span className="text-sm font-black text-[#0D0D0D] uppercase tracking-wide">Notifications</span>
                         </div>
                         {unreadCount > 0 && (
                           <button
                             onClick={handleMarkAllAsRead}
-                            className="text-[9px] text-[#433075] hover:text-[#A58CF4] font-black uppercase cursor-pointer"
+                            className="text-xs text-[#433075] hover:text-[#A58CF4] font-black uppercase cursor-pointer"
                           >
                             Mark all read
                           </button>
@@ -339,8 +421,8 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                               <div className="w-10 h-10 rounded-full bg-[#F7F7F7] flex items-center justify-center mx-auto text-[#736A86]">
                                 <Info className="w-5 h-5" />
                               </div>
-                              <p className="text-xs font-black text-[#736A86]">No notifications yet</p>
-                              <p className="text-[10px] text-[#736A86] font-semibold">Updates and sync event summaries will log here.</p>
+                              <p className="text-xs sm:text-sm font-black text-[#0D0D0D]">No notifications yet</p>
+                              <p className="text-xs text-[#736A86] font-extrabold">Updates and sync event summaries will log here.</p>
                             </motion.div>
                           ) : (
                             notifications.map((notif) => {
@@ -429,14 +511,14 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
               activeItemId={activeTab}
               onSelectItem={(id) => handleTabChange(id as NavSection)}
               bottomContent={
-                <div className="pt-6 border-t border-[#C8CED6]/40 text-left font-sans select-none w-full">
-                  <span className="text-sm font-semibold text-[#4f46e5] block mb-3 tracking-wide">Socials</span>
-                  <div className="flex items-center gap-6 text-base font-medium">
+                <div className="pt-6 border-t border-[#C8CED6]/40 text-left righteous-regular select-none w-full">
+                  <span className="text-sm sm:text-base font-bold text-[#4f46e5] block mb-3 uppercase tracking-wider">Socials</span>
+                  <div className="flex items-center gap-6 text-base sm:text-lg font-bold group/socials">
                     <a
                       href="https://github.com/Nagul55"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#8E97A6] hover:text-[#4f46e5] transition-colors duration-200"
+                      className="text-[#0D0D0D] group-hover/socials:opacity-40 hover:!opacity-100 hover:text-[#4f46e5] hover:-translate-y-0.5 transition-all duration-300 inline-block"
                     >
                       GitHub
                     </a>
@@ -444,7 +526,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                       href="https://x.com/Nagul_55"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#8E97A6] hover:text-[#4f46e5] transition-colors duration-200"
+                      className="text-[#0D0D0D] group-hover/socials:opacity-40 hover:!opacity-100 hover:text-[#4f46e5] hover:-translate-y-0.5 transition-all duration-300 inline-block"
                     >
                       Twitter
                     </a>
@@ -452,7 +534,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                       href="https://www.linkedin.com/in/nagul-g"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#8E97A6] hover:text-[#4f46e5] transition-colors duration-200"
+                      className="text-[#0D0D0D] group-hover/socials:opacity-40 hover:!opacity-100 hover:text-[#4f46e5] hover:-translate-y-0.5 transition-all duration-300 inline-block"
                     >
                       LinkedIn
                     </a>
@@ -467,7 +549,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
         <main 
           ref={mainRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto pt-24 pb-8 px-6 relative z-10 bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6]">
+          className="flex-1 overflow-y-auto overflow-x-hidden pt-20 sm:pt-24 pb-8 px-4 xs:px-6 sm:px-8 lg:px-10 relative z-10 bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6]">
           <div className="w-full">
             <AnimatePresence mode="wait">
               <motion.div
@@ -480,7 +562,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
               >
                 {activeTab === "home" && (
                   <OverviewSection 
-                    userName={userName} 
+                    userName={displayUserName} 
                     user={user}
                     onNavigate={(section) => {
                       if (section === "flashcards") {
@@ -494,14 +576,47 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                       } else if (section === "vocabulary" || section === "practice") {
                         handleTabChange("practice");
                         setPracticeSubTab("vocabulary");
+                      } else if (section === "progress" || section === "analytics") {
+                        handleTabChange("progress");
                       }
                     }} 
+                    prefetchedDecks={prefetchedDecks}
+                    prefetchedSessions={prefetchedSessions}
+                    prefetchedVocab={prefetchedVocab}
                   />
                 )}
-                {activeTab === "decks" && <DecksSection user={user} />}
-                {activeTab === "practice" && <PracticeSection user={user} />}
-                {activeTab === "progress" && <AnalyticsSection user={user} />}
-                {activeTab === "settings" && <SettingsSection user={user} onSignOut={() => setShowSignOutConfirm(true)} userName={userName} />}
+                {activeTab === "decks" && (
+                  <DecksSection 
+                    user={user} 
+                    prefetchedDecks={prefetchedDecks}
+                    prefetchedFlashcards={prefetchedFlashcards}
+                  />
+                )}
+                {activeTab === "practice" && (
+                  <PracticeSection 
+                    user={user} 
+                    prefetchedDecks={prefetchedDecks}
+                    prefetchedSessions={prefetchedSessions}
+                    prefetchedFlashcards={prefetchedFlashcards}
+                  />
+                )}
+                {activeTab === "progress" && (
+                  <AnalyticsSection 
+                    user={user} 
+                    prefetchedSessions={prefetchedSessions}
+                    prefetchedVocab={prefetchedVocab}
+                    prefetchedFlashcards={prefetchedFlashcards}
+                  />
+                )}
+                {activeTab === "settings" && (
+                  <SettingsSection 
+                    user={user} 
+                    onSignOut={() => setShowSignOutConfirm(true)} 
+                    userName={displayUserName} 
+                    prefetchedSessions={prefetchedSessions}
+                    prefetchedFlashcards={prefetchedFlashcards}
+                  />
+                )}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -16,20 +16,23 @@ export const syncUserProfile = async (user: any) => {
     const fullName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || "WordNest User";
     const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
 
-    // Fetch existing profile first to avoid overwriting custom cropped avatars
+    // Fetch existing profile first to see if it already exists
     const { data: existingProfile } = await supabase
       .from('profiles')
-      .select('avatar_url')
+      .select('id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    const finalAvatar = existingProfile?.avatar_url || avatar;
+    if (existingProfile) {
+      // Profile already exists. Skip upsert to prevent overwriting custom username or avatar.
+      return;
+    }
 
     const { error } = await supabase.from('profiles').upsert({
       id: user.id,
       username: user.email?.split('@')[0] + "_" + user.id.slice(0, 4),
       full_name: fullName,
-      avatar_url: finalAvatar,
+      avatar_url: avatar,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
 

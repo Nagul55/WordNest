@@ -14,7 +14,8 @@ import {
   BookOpen,
   Loader2,
   XCircle,
-  Sparkles
+  Sparkles,
+  Pencil
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -65,7 +66,15 @@ const CURATED_TEXTURES = [
   "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop"
 ];
 
-export default function DecksSection({ user }: { user: any }) {
+export default function DecksSection({ 
+  user,
+  prefetchedDecks,
+  prefetchedFlashcards
+}: { 
+  user: any;
+  prefetchedDecks?: any[] | null;
+  prefetchedFlashcards?: any[] | null;
+}) {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +106,21 @@ export default function DecksSection({ user }: { user: any }) {
   // Modals state
   const [isNewDeckOpen, setIsNewDeckOpen] = useState(false);
   const [isNewWordOpen, setIsNewWordOpen] = useState(false);
+
+  // Edit Deck states
+  const [isEditDeckOpen, setIsEditDeckOpen] = useState(false);
+  const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
+  const [editDeckForm, setEditDeckForm] = useState({ name: "", description: "" });
+
+  // Edit Word states
+  const [isEditWordOpen, setIsEditWordOpen] = useState(false);
+  const [editingWord, setEditingWord] = useState<Word | null>(null);
+  const [editWordForm, setEditWordForm] = useState({ word: "", meaning: "", imageType: "url" as "url" | "upload", imageUrl: "", imageFile: "" });
+  const [editImageSelectorOpen, setEditImageSelectorOpen] = useState(false);
+  const [editImageTab, setEditImageTab] = useState<"gallery" | "upload" | "link" | "unsplash">("gallery");
+  const [editUnsplashSearchQuery, setEditUnsplashSearchQuery] = useState("");
+  const [editUnsplashImages, setEditUnsplashImages] = useState<any[]>([]);
+  const [isEditUnsplashSearching, setIsEditUnsplashSearching] = useState(false);
   
   // Custom image editor popover states
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
@@ -115,6 +139,33 @@ export default function DecksSection({ user }: { user: any }) {
     
     const localKey = `wordnest_decks_${user.id}`;
     
+    // Check if preloaded props exist to skip DB round-trip
+    if (prefetchedDecks !== undefined && prefetchedDecks !== null && prefetchedFlashcards !== undefined && prefetchedFlashcards !== null) {
+      const mapped = prefetchedDecks.map(set => {
+        const cards = prefetchedFlashcards.filter(c => c.set_id === set.id);
+        return {
+          id: set.id,
+          name: set.title,
+          description: set.description || "",
+          colorGradient: set.category && set.category.startsWith("from-") 
+            ? set.category 
+            : "from-[#433075] to-[#272A3B]",
+          words: cards.map((c: any) => ({
+            id: c.id,
+            word: c.term,
+            meaning: c.definition,
+            image: c.image_url || undefined,
+            created_at: c.created_at
+          })),
+          created_at: set.created_at
+        };
+      });
+      setDecks(mapped);
+      setIsLoadingDecks(false);
+      localStorage.setItem(localKey, JSON.stringify(mapped));
+      return;
+    }
+
     // 1. Instantly load from localStorage if available for immediate rendering
     try {
       const cached = localStorage.getItem(localKey);
@@ -143,6 +194,7 @@ export default function DecksSection({ user }: { user: any }) {
                 .from("flashcards")
                 .select("*")
                 .eq("set_id", set.id)
+                .eq("user_id", user.id)
                 .order("created_at", { ascending: true });
 
               if (cardsError) {
@@ -346,6 +398,9 @@ export default function DecksSection({ user }: { user: any }) {
     } finally {
       setDecks(prev => [...prev, newDeck]);
       (window as any).wordnestNotify?.("Deck Created", `Deck "${deckForm.name.trim()}" has been created successfully.`, "success");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+      }
       setDeckForm({ name: "", description: "" });
       setIsNewDeckOpen(false);
       setIsSubmitting(false);
@@ -365,6 +420,9 @@ export default function DecksSection({ user }: { user: any }) {
         .from("study_sets")
         .delete()
         .eq("id", id);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+      }
     } catch (err: any) {
       console.warn("Notice: Deleted deck locally due to network sync exception:", err);
     }
@@ -387,10 +445,11 @@ export default function DecksSection({ user }: { user: any }) {
     };
 
     try {
-      const { data, error } = await supabase
+      let insertResult = await supabase
         .from("flashcards")
         .insert({
           set_id: selectedDeckId,
+          user_id: user.id,
           term: wordForm.word.trim(),
           definition: wordForm.meaning.trim(),
           image_url: imageSource || null
@@ -398,9 +457,22 @@ export default function DecksSection({ user }: { user: any }) {
         .select()
         .single();
 
-      if (!error && data) {
-        newWord.id = data.id;
-        newWord.created_at = data.created_at;
+      if (insertResult.error && (insertResult.error.message?.includes("user_id") || insertResult.error.code === "PGRST204" || insertResult.error.details?.includes("user_id"))) {
+        insertResult = await supabase
+          .from("flashcards")
+          .insert({
+            set_id: selectedDeckId,
+            term: wordForm.word.trim(),
+            definition: wordForm.meaning.trim(),
+            image_url: imageSource || null
+          })
+          .select()
+          .single();
+      }
+
+      if (!insertResult.error && insertResult.data) {
+        newWord.id = insertResult.data.id;
+        newWord.created_at = insertResult.data.created_at;
       }
     } catch (err: any) {
       console.warn("Notice: Added term locally due to network sync exception:", err);
@@ -443,6 +515,106 @@ export default function DecksSection({ user }: { user: any }) {
     }
   };
 
+  const handleOpenEditDeckModal = (deck: Deck) => {
+    setEditingDeck(deck);
+    setEditDeckForm({ name: deck.name, description: deck.description });
+    setIsEditDeckOpen(true);
+  };
+
+  const handleEditDeck = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDeck || !editDeckForm.name.trim() || !user) return;
+
+    setIsSubmitting(true);
+    try {
+      await supabase
+        .from("study_sets")
+        .update({
+          title: editDeckForm.name.trim(),
+          description: editDeckForm.description.trim()
+        })
+        .eq("id", editingDeck.id);
+
+      setDecks(prev => prev.map(d => {
+        if (d.id === editingDeck.id) {
+          return {
+            ...d,
+            name: editDeckForm.name.trim(),
+            description: editDeckForm.description.trim()
+          };
+        }
+        return d;
+      }));
+
+      (window as any).wordnestNotify?.("Deck Updated", `Deck details updated successfully.`, "success");
+      setIsEditDeckOpen(false);
+      setEditingDeck(null);
+    } catch (err) {
+      console.warn("Failed to edit deck:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEditWordModal = (word: Word) => {
+    setEditingWord(word);
+    setEditWordForm({
+      word: word.word,
+      meaning: word.meaning,
+      imageType: "url",
+      imageUrl: word.image && !word.image.startsWith("linear-gradient") ? word.image : "",
+      imageFile: ""
+    });
+    setIsEditWordOpen(true);
+  };
+
+  const handleEditWord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWord || !editWordForm.word.trim() || !editWordForm.meaning.trim() || !selectedDeckId || !user) return;
+
+    setIsSubmitting(true);
+    const imageSource = editWordForm.imageFile || editWordForm.imageUrl.trim() || null;
+
+    try {
+      await supabase
+        .from("flashcards")
+        .update({
+          term: editWordForm.word.trim(),
+          definition: editWordForm.meaning.trim(),
+          image_url: imageSource
+        })
+        .eq("id", editingWord.id);
+
+      setDecks(prev => prev.map(d => {
+        if (d.id === selectedDeckId) {
+          return {
+            ...d,
+            words: d.words.map(w => {
+              if (w.id === editingWord.id) {
+                return {
+                  ...w,
+                  word: editWordForm.word.trim(),
+                  meaning: editWordForm.meaning.trim(),
+                  image: imageSource || undefined
+                };
+              }
+              return w;
+            })
+          };
+        }
+        return d;
+      }));
+
+      (window as any).wordnestNotify?.("Word Updated", `Word details updated successfully.`, "success");
+      setIsEditWordOpen(false);
+      setEditingWord(null);
+    } catch (err) {
+      console.warn("Failed to edit word:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleImageFile = (file: File) => {
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -450,6 +622,52 @@ export default function DecksSection({ user }: { user: any }) {
     };
     reader.readAsDataURL(file);
   };
+
+  const handleEditImageFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditWordForm(prev => ({ ...prev, imageFile: reader.result as string, imageUrl: "" }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleEditUnsplashSearch = async (query: string) => {
+    if (!query.trim()) return;
+    setIsEditUnsplashSearching(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(query)}&per_page=12`);
+      const data = await res.json();
+      if (data.status === "success" && data.results) {
+        setEditUnsplashImages(data.results);
+      }
+    } catch (err) {
+      console.error("Edit Unsplash search error:", err);
+    } finally {
+      setIsEditUnsplashSearching(false);
+    }
+  };
+
+  // Clipboard Paste listener for Edit Word Modal
+  useEffect(() => {
+    if (!isEditWordOpen || editImageTab !== "upload") return;
+    
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            const file = items[i].getAsFile();
+            if (file) {
+              handleEditImageFile(file);
+            }
+          }
+        }
+      }
+    };
+    
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [isEditWordOpen, editImageTab]);
 
   // AI auto-generate definition helper
   const handleAutoDefine = async (termToDefine?: string) => {
@@ -521,6 +739,98 @@ export default function DecksSection({ user }: { user: any }) {
     }
   };
 
+  // Real-time listener for edit vocabulary term with 1s debounce
+  useEffect(() => {
+    const term = editWordForm.word.trim();
+    if (!isEditWordOpen || !term || term.length < 2) return;
+
+    // Check if the term has actually changed from the original word
+    const hasWordChanged = term.toLowerCase() !== editingWord?.word.toLowerCase();
+    if (!hasWordChanged) return;
+
+    const timer = setTimeout(async () => {
+      setIsGeneratingDefinition(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ word: term })
+        });
+        const data = await res.json();
+        if (data.status === "success" && data.definition) {
+          setEditWordForm(prev => ({ ...prev, meaning: data.definition }));
+        }
+      } catch (err) {
+        console.error("AI definition generation error:", err);
+      } finally {
+        setIsGeneratingDefinition(false);
+      }
+
+      setIsEditUnsplashSearching(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(term)}&per_page=12`);
+        const data = await res.json();
+        if (data.status === "success" && data.results && data.results.length > 0) {
+          setEditUnsplashImages(data.results);
+          // Auto-select the first matching image for the new word
+          setEditWordForm(prev => ({ ...prev, imageUrl: data.results[0].url, imageFile: "" }));
+        }
+      } catch (err) {
+        console.error("Auto Unsplash search error:", err);
+      } finally {
+        setIsEditUnsplashSearching(false);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [editWordForm.word, isEditWordOpen, editingWord]);
+
+  const handleEditAutoDefine = async (termToDefine?: string) => {
+    const targetWord = termToDefine || editWordForm.word.trim();
+    if (!targetWord) return;
+
+    setIsGeneratingDefinition(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: targetWord })
+      });
+      const data = await res.json();
+      if (data.status === "success" && data.definition) {
+        setEditWordForm(prev => ({ ...prev, meaning: data.definition }));
+      }
+    } catch (err) {
+      console.error("AI definition generation error:", err);
+    } finally {
+      setIsGeneratingDefinition(false);
+    }
+  };
+
+  const handleEditTermBlur = async () => {
+    const term = editWordForm.word.trim();
+    if (!term) return;
+
+    const hasWordChanged = term.toLowerCase() !== editingWord?.word.toLowerCase();
+    if (!hasWordChanged) return;
+
+    handleEditAutoDefine(term);
+
+    setIsEditUnsplashSearching(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(term)}&per_page=12`);
+      const data = await res.json();
+      if (data.status === "success" && data.results && data.results.length > 0) {
+        setEditUnsplashImages(data.results);
+        setEditWordForm(prev => ({ ...prev, imageUrl: data.results[0].url, imageFile: "" }));
+      }
+    } catch (err) {
+      console.error("Auto Unsplash search error:", err);
+    } finally {
+      setIsEditUnsplashSearching(false);
+    }
+  };
+
   const activeDeck = decks.find(d => d.id === selectedDeckId);
   const filteredWords = activeDeck
     ? activeDeck.words.filter(w =>
@@ -578,7 +888,7 @@ export default function DecksSection({ user }: { user: any }) {
             {/* Header Area */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-[#C8CED6]/40 shadow-sm">
               <div className="space-y-1">
-                <h1 className="text-3xl font-black tracking-tight righteous-regular text-[#433075]">Decks Library</h1>
+                <h1 className="text-3xl font-black tracking-tight text-[#433075]">Decks Library</h1>
                 <p className="text-sm text-[#736A86] font-medium leading-relaxed">
                   Manage your custom vocabulary folders, bundle specific terms, and review visual aids.
                 </p>
@@ -632,7 +942,7 @@ export default function DecksSection({ user }: { user: any }) {
                       
                       {/* Mid: Title & Description */}
                       <div className="space-y-1.5">
-                        <h3 className="text-xl font-black tracking-tight text-[#0D0D0D] group-hover:text-[#433075] transition-colors duration-200 uppercase righteous-regular">
+                        <h3 className="text-xl font-black tracking-tight text-[#0D0D0D] group-hover:text-[#433075] transition-colors duration-200 uppercase ">
                           {deck.name}
                         </h3>
                         <p className="text-xs text-[#736A86] line-clamp-2 leading-relaxed font-normal">
@@ -647,13 +957,25 @@ export default function DecksSection({ user }: { user: any }) {
                         <span>Open Folder</span>
                         <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
                       </span>
-                      <button
-                        onClick={(e) => handleDeleteDeck(deck.id, e)}
-                        className="p-2 text-[#8E97A6] hover:text-red-500 rounded-xl hover:bg-red-50 transition-all cursor-pointer"
-                        title="Delete Deck"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditDeckModal(deck);
+                          }}
+                          className="p-2 text-[#8E97A6] hover:text-[#433075] rounded-xl hover:bg-indigo-50 transition-all cursor-pointer"
+                          title="Edit Deck"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteDeck(deck.id, e)}
+                          className="p-2 text-[#8E97A6] hover:text-red-500 rounded-xl hover:bg-red-50 transition-all cursor-pointer"
+                          title="Delete Deck"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -676,14 +998,24 @@ export default function DecksSection({ user }: { user: any }) {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-[#C8CED6]/40 shadow-sm">
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => setSelectedDeckId(null)}
+                  onClick={() => {
+                    window.location.hash = "";
+                    setSelectedDeckId(null);
+                  }}
                   className="p-3 rounded-2xl bg-white border border-[#C8CED6]/40 hover:border-[#433075] text-[#736A86] hover:text-[#433075] transition-all cursor-pointer shadow-sm hover:shadow active:scale-95"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-black tracking-tight righteous-regular text-[#433075] uppercase">{activeDeck?.name}</h1>
+                    <h1 className="text-2xl font-black tracking-tight text-[#433075] uppercase">{activeDeck?.name}</h1>
+                    <button
+                      onClick={() => activeDeck && handleOpenEditDeckModal(activeDeck)}
+                      className="p-1.5 text-[#736A86] hover:text-[#433075] hover:bg-white rounded-lg transition-all cursor-pointer border border-transparent hover:border-[#C8CED6]/40"
+                      title="Edit Deck Title/Description"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <span className="text-[10px] bg-[#433075] text-white px-2 py-0.5 rounded-md font-black">DECK</span>
                   </div>
                   <p className="text-xs text-[#736A86] font-medium leading-relaxed max-w-xl">
@@ -780,7 +1112,7 @@ export default function DecksSection({ user }: { user: any }) {
                     {/* Word Metadata */}
                     <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                       <div className="space-y-2">
-                        <h3 className="text-xl font-black text-[#0D0D0D] tracking-tight righteous-regular uppercase group-hover:text-[#433075] transition-colors">
+                        <h3 className="text-xl font-black text-[#0D0D0D] tracking-tight uppercase group-hover:text-[#433075] transition-colors">
                           {word.word}
                         </h3>
                         <p className="text-xs text-[#736A86] leading-relaxed font-normal text-left text-wrap max-w-full truncate overflow-ellipsis">
@@ -793,13 +1125,22 @@ export default function DecksSection({ user }: { user: any }) {
                         <span className="text-[10px] text-[#8E97A6] font-bold">
                           Added {new Date(word.created_at).toLocaleDateString()}
                         </span>
-                        <button
-                          onClick={() => handleDeleteWord(word.id)}
-                          className="p-2 text-[#8E97A6] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
-                          title="Delete Word"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenEditWordModal(word)}
+                            className="p-2 text-[#8E97A6] hover:text-[#433075] hover:bg-indigo-50 rounded-xl transition-all cursor-pointer"
+                            title="Edit Word"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteWord(word.id)}
+                            className="p-2 text-[#8E97A6] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                            title="Delete Word"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -819,61 +1160,61 @@ export default function DecksSection({ user }: { user: any }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
-              className="w-full max-w-lg bg-white/90 backdrop-blur-xl border border-white/60 p-8 rounded-[32px] shadow-2xl space-y-8 text-left righteous-regular"
+              className="w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar bg-white/95 backdrop-blur-xl border border-white/60 p-4 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl space-y-5 sm:space-y-6 text-left"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-[#C8CED6]/40">
-                <h3 className="text-2xl font-black text-[#433075] tracking-tight">Create New Deck</h3>
+              <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C8CED6]/40">
+                <h3 className="text-xl sm:text-2xl font-black text-[#433075] tracking-tight">Create New Deck</h3>
                 <button
                   onClick={() => setIsNewDeckOpen(false)}
-                  className="p-2 text-[#736A86] hover:text-[#433075] rounded-xl hover:bg-black/5 transition-all cursor-pointer"
+                  className="p-1.5 sm:p-2 text-[#736A86] hover:text-[#433075] rounded-xl hover:bg-black/5 transition-all cursor-pointer"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
 
-              <form onSubmit={handleCreateDeck} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Deck Name</label>
+              <form onSubmit={handleCreateDeck} className="space-y-4 sm:space-y-5">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Deck Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Advanced Academic Vocabulary"
                     value={deckForm.name}
                     onChange={(e) => setDeckForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-5 py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300"
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Description</label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Description</label>
                   <textarea
                     rows={3}
                     placeholder="Write a brief overview of the deck purpose..."
                     value={deckForm.description}
                     onChange={(e) => setDeckForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-5 py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300 resize-none"
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300 resize-none"
                   />
                 </div>
 
-                <div className="flex items-center gap-4 pt-4">
+                <div className="flex items-center gap-3 sm:gap-4 pt-3 sm:pt-4">
                   <button
                     type="button"
                     onClick={() => setIsNewDeckOpen(false)}
                     disabled={isSubmitting}
-                    className="w-1/2 py-3.5 rounded-2xl border border-[#C8CED6] hover:bg-[#F7F7F7] hover:border-[#736A86] text-[#736A86] font-black text-sm transition-all duration-300 cursor-pointer active:scale-95"
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl border border-[#C8CED6] hover:bg-[#F7F7F7] hover:border-[#736A86] text-[#736A86] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-1/2 py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-sm transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"
                   >
                     {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                     <span>Create Deck</span>
@@ -894,28 +1235,28 @@ export default function DecksSection({ user }: { user: any }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
-              className="w-full max-w-3xl max-h-[95vh] overflow-y-auto custom-scrollbar bg-white/90 backdrop-blur-xl border border-white/60 p-8 rounded-2xl shadow-2xl space-y-6 text-left righteous-regular"
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-white/95 backdrop-blur-xl border border-white/60 p-4 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl space-y-4 sm:space-y-6 text-left"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-[#C8CED6]/40">
-                <h3 className="text-2xl font-black text-[#433075] tracking-tight">Add Word to Folder</h3>
+              <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C8CED6]/40">
+                <h3 className="text-xl sm:text-2xl font-black text-[#433075] tracking-tight">Add Word to Folder</h3>
                 <button
                   onClick={() => { window.location.hash = `deck-${selectedDeckId}`; }}
-                  className="p-2 text-[#736A86] hover:text-[#433075] rounded-xl hover:bg-black/5 transition-all cursor-pointer"
+                  className="p-1.5 sm:p-2 text-[#736A86] hover:text-[#433075] rounded-xl hover:bg-black/5 transition-all cursor-pointer"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
 
-              <form onSubmit={handleAddWord} className="space-y-4">
+              <form onSubmit={handleAddWord} className="space-y-3.5 sm:space-y-4">
                 {/* Word Input */}
-                <div className="space-y-2">
-                  <label className="text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Vocabulary Term</label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Vocabulary Term</label>
                   <input
                     type="text"
                     required
@@ -923,19 +1264,19 @@ export default function DecksSection({ user }: { user: any }) {
                     value={wordForm.word}
                     onChange={(e) => setWordForm(prev => ({ ...prev, word: e.target.value }))}
                     onBlur={handleTermBlur}
-                    className="w-full px-5 py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300"
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300"
                   />
                 </div>
 
                 {/* Definition Input */}
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   <div className="flex items-center justify-between pl-1">
-                    <label className="text-[13px] font-black text-[#433075] uppercase tracking-wider">Definition / Meaning</label>
+                    <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider">Definition / Meaning</label>
                     <button
                       type="button"
                       onClick={() => handleAutoDefine()}
                       disabled={isGeneratingDefinition || !wordForm.word.trim()}
-                      className="text-xs font-black text-[#433075] hover:text-[#A58CF4] flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-[11px] sm:text-xs font-black text-[#433075] hover:text-[#A58CF4] flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isGeneratingDefinition ? (
                         <Loader2 className="w-3 h-3 animate-spin text-current" />
@@ -951,15 +1292,15 @@ export default function DecksSection({ user }: { user: any }) {
                     placeholder="Write the clear definition or click Auto-Generate..."
                     value={wordForm.meaning}
                     onChange={(e) => setWordForm(prev => ({ ...prev, meaning: e.target.value }))}
-                    className="w-full px-5 py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300 resize-none"
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300 resize-none"
                   />
                 </div>
 
                 {/* Cover Image Visual Preview Area with Overlay Selector */}
-                <div className="space-y-2 relative">
-                  <label className="text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Cover Image</label>
+                <div className="space-y-1.5 sm:space-y-2 relative">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Cover Image</label>
                   
-                  <div className="relative w-full h-40 rounded-2xl border border-[#C8CED6]/50 overflow-hidden group shadow-sm bg-gradient-to-br from-[#DFE3E8] to-[#C8CED6]">
+                  <div className="relative w-full h-32 sm:h-40 rounded-2xl border border-[#C8CED6]/50 overflow-hidden group shadow-sm bg-gradient-to-br from-[#DFE3E8] to-[#C8CED6]">
                     {previewImage ? (
                       previewImage.startsWith("linear-gradient") || previewImage.startsWith("rgba") || previewImage.startsWith("#") ? (
                         <div 
@@ -1017,7 +1358,7 @@ export default function DecksSection({ user }: { user: any }) {
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-16 right-3 w-[450px] max-w-full z-50 p-5 rounded-2xl bg-[#1E202B] text-white border border-[#2A2E3D] shadow-2xl space-y-4 righteous-regular"
+                          className="absolute top-16 right-0 sm:right-3 w-[calc(100vw-2.5rem)] max-w-md z-50 p-4 sm:p-5 rounded-2xl bg-[#1E202B] text-white border border-[#2A2E3D] shadow-2xl space-y-4"
                         >
                           {/* Tabs Navigation */}
                           <div className="flex items-center justify-between border-b border-[#2A2E3D] pb-2">
@@ -1055,7 +1396,7 @@ export default function DecksSection({ user }: { user: any }) {
                               <div className="space-y-4">
                                 {/* Gradients */}
                                 <div className="space-y-1.5 text-left">
-                                  <h4 className="text-[11px] font-black text-[#8E97A6] uppercase tracking-wider pl-1">Color & Gradient</h4>
+                                  <h4 className="text-[11px] font-black text-[#8E97A6] uppercase tracking-wider pl-1">Color and Gradient</h4>
                                   <div className="grid grid-cols-4 gap-2">
                                     {CURATED_GRADIENTS.map((grad, i) => (
                                       <button
@@ -1229,22 +1570,454 @@ export default function DecksSection({ user }: { user: any }) {
                 />
 
                 {/* Cancel & Submit Actions */}
-                <div className="flex items-center gap-4 pt-4">
+                <div className="flex items-center gap-3 sm:gap-4 pt-3 sm:pt-4">
                   <button
                     type="button"
                     onClick={() => { window.location.hash = `deck-${selectedDeckId}`; }}
                     disabled={isSubmitting}
-                    className="w-1/2 py-3.5 rounded-2xl border border-[#C8CED6] hover:bg-[#F7F7F7] hover:border-[#736A86] text-[#736A86] font-black text-sm transition-all duration-300 cursor-pointer active:scale-95"
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl border border-[#C8CED6] hover:bg-[#F7F7F7] hover:border-[#736A86] text-[#736A86] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-1/2 py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-sm font-black transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"
                   >
                     {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                     <span>Add Word</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ==========================================
+          MODAL: EDIT DECK
+          ========================================== */}
+      <AnimatePresence>
+        {isEditDeckOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar bg-white/95 backdrop-blur-xl border border-white/60 p-4 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl space-y-5 sm:space-y-6 text-left"
+            >
+              <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C8CED6]/40">
+                <h3 className="text-xl sm:text-2xl font-black text-[#433075] tracking-tight">Edit Deck Details</h3>
+                <button
+                  onClick={() => setIsEditDeckOpen(false)}
+                  className="p-1.5 sm:p-2 text-[#736A86] hover:text-[#433075] rounded-xl hover:bg-black/5 transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditDeck} className="space-y-4 sm:space-y-5">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Deck Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Advanced Academic Vocabulary"
+                    value={editDeckForm.name}
+                    onChange={(e) => setEditDeckForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Description</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Write a brief overview of the deck purpose..."
+                    value={editDeckForm.description}
+                    onChange={(e) => setEditDeckForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300 resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 sm:gap-4 pt-3 sm:pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditDeckOpen(false)}
+                    disabled={isSubmitting}
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl border border-[#C8CED6] hover:bg-[#F7F7F7] hover:border-[#736A86] text-[#736A86] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ==========================================
+          MODAL: EDIT WORD
+          ========================================== */}
+      <AnimatePresence>
+        {isEditWordOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar bg-white/95 backdrop-blur-xl border border-white/60 p-4 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl space-y-5 sm:space-y-6 text-left"
+            >
+              <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C8CED6]/40">
+                <h3 className="text-xl sm:text-2xl font-black text-[#433075] tracking-tight">Edit Word Details</h3>
+                <button
+                  onClick={() => setIsEditWordOpen(false)}
+                  className="p-1.5 sm:p-2 text-[#736A86] hover:text-[#433075] rounded-xl hover:bg-black/5 transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditWord} className="space-y-4 sm:space-y-5">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Vocabulary Word</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ephemeral"
+                    value={editWordForm.word}
+                    onChange={(e) => setEditWordForm(prev => ({ ...prev, word: e.target.value }))}
+                    onBlur={handleEditTermBlur}
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center justify-between pl-1">
+                    <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider">Definition / Meaning</label>
+                    <button
+                      type="button"
+                      onClick={() => handleEditAutoDefine()}
+                      disabled={isGeneratingDefinition || !editWordForm.word.trim()}
+                      className="text-[11px] sm:text-xs font-black text-[#433075] hover:text-[#A58CF4] flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isGeneratingDefinition ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-current" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5 text-[#433075]" />
+                      )}
+                      <span>Auto-Generate (AI)</span>
+                    </button>
+                  </div>
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder="Define the term in clear, simple language..."
+                    value={editWordForm.meaning}
+                    onChange={(e) => setEditWordForm(prev => ({ ...prev, meaning: e.target.value }))}
+                    className="w-full px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-white border border-[#C8CED6]/50 focus:border-[#433075] focus:outline-none text-xs sm:text-sm text-[#0D0D0D] font-black shadow-inner hover:border-[#736A86] focus:ring-4 focus:ring-[#A58CF4]/20 transition-all duration-300 resize-none animate-fadeIn"
+                  />
+                </div>
+
+                {/* Cover Image Visual Preview Area with Overlay Selector */}
+                <div className="space-y-1.5 sm:space-y-2 relative">
+                  <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Cover Image</label>
+                  
+                  <div className="relative w-full h-32 sm:h-40 rounded-2xl border border-[#C8CED6]/50 overflow-hidden group shadow-sm bg-gradient-to-br from-[#DFE3E8] to-[#C8CED6]">
+                    {(editWordForm.imageFile || editWordForm.imageUrl) ? (
+                      (editWordForm.imageFile || editWordForm.imageUrl).startsWith("linear-gradient") || (editWordForm.imageFile || editWordForm.imageUrl).startsWith("rgba") || (editWordForm.imageFile || editWordForm.imageUrl).startsWith("#") ? (
+                        <div 
+                          style={{ background: editWordForm.imageFile || editWordForm.imageUrl }} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <img 
+                          src={editWordForm.imageFile || editWordForm.imageUrl} 
+                          alt="Cover preview" 
+                          className="w-full h-full object-cover" 
+                        />
+                      )
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-[#736A86]/50 space-y-1 select-none">
+                        <ImageIcon className="w-8 h-8 opacity-60" />
+                        <span className="text-xs font-black tracking-wider uppercase">No cover selected</span>
+                      </div>
+                    )}
+
+                    {/* Float controls at top right */}
+                    <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+                      <button
+                        type="button"
+                        onClick={() => setEditImageSelectorOpen(!editImageSelectorOpen)}
+                        className="px-3 py-1.5 rounded-xl bg-[#0D0D0D]/75 text-white hover:bg-white hover:text-[#0D0D0D] font-bold text-[11px] transition-all duration-200 backdrop-blur-sm cursor-pointer shadow flex items-center gap-1"
+                      >
+                        Change
+                      </button>
+                      {(editWordForm.imageFile || editWordForm.imageUrl) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditWordForm(prev => ({ ...prev, imageUrl: "", imageFile: "" }));
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-red-600/75 text-white hover:bg-red-600 font-bold text-[11px] transition-all duration-200 backdrop-blur-sm cursor-pointer shadow"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Tabbed Image Selector Drawer (Notion style absolute overlay) */}
+                  <AnimatePresence>
+                    {editImageSelectorOpen && (
+                      <>
+                        {/* Invisible full screen backdrop to catch clicks outside */}
+                        <div 
+                          className="fixed inset-0 z-40 cursor-default" 
+                          onClick={() => setEditImageSelectorOpen(false)} 
+                        />
+                        
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-16 right-0 sm:right-3 w-[calc(100vw-2.5rem)] max-w-md z-50 p-4 sm:p-5 rounded-2xl bg-[#1E202B] text-white border border-[#2A2E3D] shadow-2xl space-y-4"
+                        >
+                          {/* Tabs Navigation */}
+                          <div className="flex items-center justify-between border-b border-[#2A2E3D] pb-2">
+                            <div className="flex gap-4">
+                              {(["gallery", "upload", "link", "unsplash"] as const).map(tab => (
+                                <button
+                                  key={tab}
+                                  type="button"
+                                  onClick={() => setEditImageTab(tab)}
+                                  className={`text-xs font-bold uppercase pb-1 border-b-2 transition-all cursor-pointer ${
+                                    editImageTab === tab 
+                                      ? "border-[#4facfe] text-white" 
+                                      : "border-transparent text-[#8E97A6] hover:text-white"
+                                  }`}
+                                >
+                                  {tab}
+                                </button>
+                              ))}
+                            </div>
+                            
+                            {/* Close icon */}
+                            <button
+                              type="button"
+                              onClick={() => setEditImageSelectorOpen(false)}
+                              className="p-1 text-[#8E97A6] hover:text-white rounded-lg transition-all cursor-pointer"
+                              title="Close"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* Content panel */}
+                          <div className="min-h-[160px] max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                            {editImageTab === "gallery" && (
+                              <div className="space-y-4">
+                                {/* Gradients */}
+                                <div className="space-y-1.5 text-left">
+                                  <h4 className="text-[11px] font-black text-[#8E97A6] uppercase tracking-wider pl-1">Color and Gradient</h4>
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {CURATED_GRADIENTS.map((grad, i) => (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditWordForm(prev => ({ ...prev, imageUrl: grad, imageFile: "" }));
+                                          setEditImageSelectorOpen(false);
+                                        }}
+                                        style={{ background: grad }}
+                                        className={`h-10 rounded-xl hover:scale-105 transition-all cursor-pointer border ${
+                                          editWordForm.imageUrl === grad ? "border-white ring-2 ring-[#4facfe]" : "border-transparent"
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                {/* Textures */}
+                                <div className="space-y-1.5 text-left">
+                                  <h4 className="text-[11px] font-black text-[#8E97A6] uppercase tracking-wider pl-1">Texturelabs</h4>
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {CURATED_TEXTURES.map((tex, i) => (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditWordForm(prev => ({ ...prev, imageUrl: tex, imageFile: "" }));
+                                          setEditImageSelectorOpen(false);
+                                        }}
+                                        className={`h-10 rounded-xl hover:scale-105 transition-all cursor-pointer overflow-hidden relative border ${
+                                          editWordForm.imageUrl === tex ? "border-white ring-2 ring-[#4facfe]" : "border-transparent"
+                                        }`}
+                                      >
+                                        <img src={tex} alt="Texture option" className="w-full h-full object-cover" />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {editImageTab === "upload" && (
+                              <div
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  const file = e.dataTransfer.files?.[0];
+                                  if (file) handleEditImageFile(file);
+                                }}
+                                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#2A2E3D] hover:border-[#4facfe] rounded-xl bg-[#14161F] transition-all group cursor-pointer relative"
+                              >
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleEditImageFile(file);
+                                  }}
+                                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                />
+                                <div className="text-center space-y-2 pointer-events-none">
+                                  {editWordForm.imageFile ? (
+                                    <div className="flex items-center gap-2 text-xs font-black text-emerald-400">
+                                      <ImageIcon className="w-5 h-5" />
+                                      <span>Uploaded successfully!</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <Upload className="w-6 h-6 text-[#8E97A6] group-hover:text-white mx-auto transition-colors" />
+                                      <span className="text-xs font-black text-[#8E97A6] block">Upload file</span>
+                                      <span className="text-[10px] text-[#555] block">or Ctrl+V to paste an image</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {editImageTab === "link" && (
+                              <div className="space-y-3 pt-2">
+                                <input
+                                  type="url"
+                                  placeholder="Paste an image link..."
+                                  value={editWordForm.imageUrl}
+                                  onChange={(e) => setEditWordForm(prev => ({ ...prev, imageUrl: e.target.value, imageFile: "" }))}
+                                  className="w-full px-4 py-2.5 rounded-xl bg-[#14161F] border border-[#2A2E3D] focus:border-[#4facfe] focus:outline-none text-xs text-white font-semibold transition-all"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setEditImageSelectorOpen(false)}
+                                  className="w-full py-2.5 rounded-xl bg-[#2b6cb0] hover:bg-[#3182ce] text-white font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1 shadow"
+                                >
+                                  Submit
+                                </button>
+                                <p className="text-[10px] text-center text-[#8E97A6]">Works with any image from the web.</p>
+                              </div>
+                            )}
+
+                            {editImageTab === "unsplash" && (
+                              <div className="space-y-3">
+                                {/* Search bar */}
+                                <div className="relative">
+                                  <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-[#8E97A6] pointer-events-none" />
+                                  <input
+                                    type="text"
+                                    placeholder="Search for an image..."
+                                    value={editUnsplashSearchQuery}
+                                    onChange={(e) => setEditUnsplashSearchQuery(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleEditUnsplashSearch(editUnsplashSearchQuery);
+                                      }
+                                    }}
+                                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#14161F] border border-[#2A2E3D] focus:border-[#4facfe] focus:outline-none text-xs text-white font-semibold transition-all"
+                                  />
+                                </div>
+
+                                {/* Images grid */}
+                                {isEditUnsplashSearching ? (
+                                  <div className="flex items-center justify-center py-10 space-y-2">
+                                    <Loader2 className="w-5 h-5 animate-spin text-[#4facfe]" />
+                                  </div>
+                                ) : editUnsplashImages.length === 0 ? (
+                                  <p className="text-[10px] text-center text-[#8E97A6] py-10">Search Unsplash for visual representations above.</p>
+                                ) : (
+                                  <div className="grid grid-cols-2 gap-3">
+                                    {editUnsplashImages.map((img) => (
+                                      <div key={img.id} className="group/item space-y-1 text-left">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditWordForm(prev => ({ ...prev, imageUrl: img.url, imageFile: "" }));
+                                            setEditImageSelectorOpen(false);
+                                          }}
+                                          className={`w-full h-24 rounded-xl overflow-hidden relative border ${
+                                            editWordForm.imageUrl === img.url ? "border-white ring-2 ring-[#4facfe]" : "border-transparent"
+                                          } hover:scale-[1.02] transition-transform cursor-pointer`}
+                                        >
+                                          <img src={img.thumb} alt={img.alt_text} className="w-full h-full object-cover" />
+                                        </button>
+                                        <div className="text-[9px] text-[#8E97A6] truncate px-1">
+                                          by{" "}
+                                          <a
+                                            href={img.author_link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline hover:text-white"
+                                          >
+                                            {img.author}
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="flex items-center gap-3 sm:gap-4 pt-3 sm:pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditWordOpen(false)}
+                    disabled={isSubmitting}
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl border border-[#C8CED6] hover:bg-[#F7F7F7] hover:border-[#736A86] text-[#736A86] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-1/2 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    <span>Save Word</span>
                   </button>
                 </div>
               </form>

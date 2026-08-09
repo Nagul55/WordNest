@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Layers, 
   RotateCw, 
@@ -135,7 +135,7 @@ export default function FlashcardsSection({ user }: { user?: any }) {
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-fadeIn righteous-regular max-w-5xl mx-auto text-[#0D0D0D]">
+    <div className="space-y-8 pb-12 animate-fadeIn max-w-5xl mx-auto text-[#0D0D0D] w-full max-w-full overflow-x-hidden">
       
       {/* HEADER BANNER (DEEP PURPLE TO SLATE GRADIENT) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#433075] via-[#272A3B] to-[#0D0D0D] text-[#FAFAFA] border-2 border-[#A58CF4] shadow-xl">
@@ -242,6 +242,8 @@ export default function FlashcardsSection({ user }: { user?: any }) {
           ) : deckCards.length === 0 ? (
             <div className="text-center p-12 text-[#736A86] font-bold">No cards found in your vault. Please add vocabulary words first!</div>
           ) : (
+            <>
+
 
           {/* 3D PERSPECTIVE FLIP BOX */}
           <div 
@@ -252,14 +254,14 @@ export default function FlashcardsSection({ user }: { user?: any }) {
               }
               setIsFlipped(!isFlipped);
             }}
-            className={`w-full max-w-2xl h-[380px] sm:h-[420px] mx-auto cursor-pointer perspective-1000 ${isFlipped ? "flipped" : ""}`}
+            className={`w-full max-w-2xl h-[300px] xs:h-[340px] sm:h-[420px] mx-auto cursor-pointer perspective-1000 ${isFlipped ? "flipped" : ""}`}
           >
             <div className="relative w-full h-full flip-card-inner">
               
               {/* ==========================================
                   FRONT OF CARD (TERM & SPEECH)
                   ========================================== */}
-              <div className="flip-card-front rounded-3xl bg-white border-2 border-[#C8CED6] hover:border-[#433075] p-8 sm:p-12 flex flex-col justify-between shadow-xl group transition-all">
+              <div className="flip-card-front rounded-3xl bg-white border-2 border-[#C8CED6] hover:border-[#433075] p-5 sm:p-12 flex flex-col justify-between shadow-xl group transition-all">
                 <div className="flex items-center justify-between">
                   <span className="px-3.5 py-1 rounded-full bg-[#F7F7F7] text-[#433075] font-black text-xs uppercase tracking-wider border border-[#C8CED6] shadow-sm">
                     {currentCard.deck}
@@ -341,9 +343,10 @@ export default function FlashcardsSection({ user }: { user?: any }) {
               className="w-full sm:w-1/2 py-4 rounded-2xl bg-[#433075] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] text-[#FAFAFA] font-black text-xs shadow-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-transparent hover:border-[#0D0D0D] group"
             >
               <CheckCircle2 className="w-5 h-5 text-[#A58CF4] group-hover:text-[#FAFAFA] group-hover:scale-110 transition-transform" />
-              <span>Mastered & Retained (Easy)</span>
+              <span>Mastered and Retained (Easy)</span>
             </button>
           </div>
+            </>
           )}
         </div>
       )}

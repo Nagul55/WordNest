@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import ALLOWED_ORIGINS
-from app.routers import ai, unsplash
+from app.routers import ai, unsplash, auth
 
 app = FastAPI(
     title="WordNest Backend API",
@@ -21,6 +21,7 @@ app.add_middleware(
 # Include Routers
 app.include_router(ai.router)
 app.include_router(unsplash.router)
+app.include_router(auth.router)
 
 @app.get("/health")
 def health_check():

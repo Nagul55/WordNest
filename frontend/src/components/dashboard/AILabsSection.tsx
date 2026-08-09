@@ -128,34 +128,36 @@ export default function AILabsSection({ user }: { user?: any }) {
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-fadeIn righteous-regular max-w-6xl mx-auto text-[#0D0D0D]">
+    <div className="space-y-8 pb-12 animate-fadeIn max-w-6xl mx-auto text-[#0D0D0D] w-full max-w-full overflow-x-hidden">
       
       {/* HEADER BANNER (DEEP PURPLE TO SLATE GRADIENT) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#433075] via-[#272A3B] to-[#0D0D0D] text-[#FAFAFA] border-2 border-[#A58CF4] shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-[#433075] via-[#272A3B] to-[#0D0D0D] text-[#FAFAFA] border-2 border-[#A58CF4] shadow-xl">
         <div>
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-[#A58CF4]/50 text-[#FAFAFA] text-xs font-black uppercase tracking-wider mb-2 shadow-inner">
-            <Cpu className="w-3.5 h-3.5 animate-pulse text-[#A58CF4]" />
-            <span>GPT-4o Neural Synapse Engine</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-[#A58CF4]/50 text-[#FAFAFA] text-[10px] sm:text-xs font-black uppercase tracking-wider mb-2 shadow-inner">
+            <Sparkles className="w-3.5 h-3.5 text-[#A58CF4] animate-pulse" />
+            <span>AI Neural Synthesis Engine</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-            AI Study Lab & Tutoring Suite
+          <h1 className="text-xl sm:text-4xl font-black text-white tracking-tight">
+            Advanced Lexical AI Labs
           </h1>
           <p className="text-xs sm:text-sm text-[#F7F7F7] mt-1 font-normal">
-            Harness advanced AI models to synthesize mnemonics, conduct Socratic dialogues, and refine writing composition.
+            Autonomous Socratic dissections, academic essay polishing, and sensory mnemonic generation.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white text-[#0D0D0D] px-4 py-3 rounded-2xl border-2 border-[#433075] shadow-lg shrink-0">
-          <Terminal className="w-5 h-5 text-[#433075]" />
+        <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 p-3 sm:p-4 rounded-2xl shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#A58CF4]/20 border border-[#A58CF4]/40 flex items-center justify-center text-[#A58CF4]">
+            <Cpu className="w-5 h-5 animate-pulse" />
+          </div>
           <div>
-            <div className="text-[10px] font-bold text-[#736A86] uppercase">Engine Status</div>
-            <div className="text-xs font-black text-[#0D0D0D]">Synaptic Latency: 18ms</div>
+            <div className="text-[10px] font-bold text-[#C8CED6] uppercase">Engine Status</div>
+            <div className="text-xs font-black text-white">Synaptic Latency: 18ms</div>
           </div>
         </div>
       </div>
 
       {/* LAB MODE SELECTOR CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         {labModes.map((mode) => {
           const IconComponent = mode.icon;
           const isSelected = activeMode === mode.id;
@@ -168,29 +170,29 @@ export default function AILabsSection({ user }: { user?: any }) {
                 setAiOutput(null);
                 setInputText("");
               }}
-              className={`p-6 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col justify-between shadow-md relative overflow-hidden group ${
+              className={`p-5 sm:p-6 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col justify-between shadow-md relative overflow-hidden group ${
                 isSelected
                   ? "bg-[#433075] text-[#FAFAFA] border-[#A58CF4] shadow-xl scale-[1.02]"
                   : "bg-white border-[#C8CED6] text-[#0D0D0D] hover:bg-gradient-to-br hover:from-[#736A86] hover:to-[#272A3B] hover:text-[#FAFAFA] hover:border-transparent hover:shadow-xl"
               }`}
             >
               <div>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 border transition-all ${
+                <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 border transition-all ${
                   isSelected 
                     ? "bg-white border-white text-[#433075] shadow-inner" 
                     : "bg-[#F7F7F7] border-[#C8CED6] text-[#433075] group-hover:bg-[#FAFAFA]/20 group-hover:text-[#FAFAFA] group-hover:border-transparent"
                 }`}>
-                  <IconComponent className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
                 </div>
-                <h3 className={`text-base font-black transition-colors ${isSelected ? "text-white" : "text-[#0D0D0D] group-hover:text-[#FAFAFA]"}`}>
+                <h3 className={`text-sm sm:text-base font-black transition-colors ${isSelected ? "text-white" : "text-[#0D0D0D] group-hover:text-[#FAFAFA]"}`}>
                   {mode.title}
                 </h3>
-                <p className={`text-xs mt-2 leading-relaxed font-normal transition-colors ${isSelected ? "text-[#F7F7F7]" : "text-[#736A86] group-hover:text-[#C8CED6]"}`}>
+                <p className={`text-xs sm:text-sm mt-1.5 leading-relaxed font-semibold transition-colors ${isSelected ? "text-[#F7F7F7]" : "text-[#736A86] group-hover:text-[#C8CED6]"}`}>
                   {mode.subtitle}
                 </p>
               </div>
 
-              <div className="mt-6 pt-3 border-t border-[#C8CED6]/40 group-hover:border-[#FAFAFA]/20 transition-colors flex items-center justify-between text-[11px] font-extrabold">
+              <div className="mt-4 sm:mt-6 pt-3 border-t border-[#C8CED6]/40 group-hover:border-[#FAFAFA]/20 transition-colors flex items-center justify-between text-xs sm:text-sm font-black">
                 <span className={isSelected ? "text-[#A58CF4]" : "text-[#433075] group-hover:text-[#FAFAFA]"}>Neural Mode</span>
                 <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-[#A58CF4] animate-ping" : "bg-[#736A86] group-hover:bg-[#A58CF4]"}`} />
               </div>
@@ -200,15 +202,15 @@ export default function AILabsSection({ user }: { user?: any }) {
       </div>
 
       {/* INPUT CONSOLE & OUTPUT EXHIBITION */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#C8CED6] shadow-md space-y-6">
+      <div className="p-4 sm:p-8 rounded-3xl bg-white border border-[#C8CED6] shadow-md space-y-5 sm:space-y-6">
         
         {/* Console status badge */}
         <div className="flex items-center justify-between border-b border-[#C8CED6]/80 pb-4">
-          <div className="flex items-center gap-2 text-xs font-black text-[#0D0D0D]">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-[#0D0D0D]">
             <Layers className="w-4 h-4 text-[#433075]" />
-            <span>Active Module: <strong className="text-[#433075]">{currentMode.title}</strong></span>
+            <span>Active Module: <strong className="text-[#433075] font-black">{currentMode.title}</strong></span>
           </div>
-          <span className="text-xs text-[#736A86] font-semibold">AI Assistant Offline Token Buffer</span>
+          <span className="text-xs sm:text-sm text-[#736A86] font-extrabold">AI Assistant Offline Token Buffer</span>
         </div>
 
         {/* Form Console */}
@@ -220,20 +222,20 @@ export default function AILabsSection({ user }: { user?: any }) {
               onChange={(e) => setInputText(e.target.value)}
               placeholder={currentMode.placeholder}
               disabled={isAnalyzing}
-              className="w-full p-5 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#736A86] focus:border-[#433075] focus:bg-white focus:outline-none text-xs sm:text-sm text-[#0D0D0D] placeholder-[#736A86] font-medium leading-relaxed resize-none transition-all shadow-inner"
+              className="w-full p-5 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#736A86] focus:border-[#433075] focus:bg-white focus:outline-none text-sm sm:text-base text-[#0D0D0D] placeholder-[#736A86] font-semibold leading-relaxed resize-none transition-all shadow-inner"
             />
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-[#736A86]">
-              <span className="w-2 h-2 rounded-full bg-[#433075]" />
-              <span>Press <strong className="text-[#0D0D0D]">Synthesize AI Report</strong> to generate instant insights</span>
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-[#736A86] font-extrabold">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#433075]" />
+              <span>Press <strong className="text-[#0D0D0D] font-black">Synthesize AI Report</strong> to generate instant insights</span>
             </div>
 
             <button
               type="submit"
               disabled={isAnalyzing || !inputText.trim()}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#433075] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] text-[#FAFAFA] font-black text-xs shadow-md transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer active:scale-95 border border-transparent hover:border-[#736A86] group"
+              className="w-full sm:w-auto px-8 py-3.5 sm:py-4 rounded-2xl bg-[#433075] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] text-[#FAFAFA] font-black text-xs sm:text-sm shadow-md transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer active:scale-95 border border-transparent hover:border-[#736A86] group"
             >
               {isAnalyzing ? (
                 <>

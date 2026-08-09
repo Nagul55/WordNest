@@ -213,6 +213,11 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   const playOpen = useCallback(() => {
     if (busyRef.current) return;
     busyRef.current = true;
+    const panel = panelRef.current;
+    const layers = preLayerElsRef.current;
+    if (panel) {
+      gsap.set([panel, ...layers], { visibility: 'visible', pointerEvents: 'auto' });
+    }
     const tl = buildOpenTimeline();
     if (tl) {
       tl.eventCallback('onComplete', () => {
@@ -242,6 +247,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       ease: 'power3.in',
       overwrite: 'auto',
       onComplete: () => {
+        gsap.set(all, { visibility: 'hidden', pointerEvents: 'none' });
         const itemEls = Array.from(panel.querySelectorAll('.sm-panel-itemLabel'));
         if (itemEls.length) {
           gsap.set(itemEls, { yPercent: 140, rotate: 10 });
@@ -428,6 +434,13 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
           </span>
         </button>
       </div>
+
+      {open && (
+        <div 
+          className="fixed inset-0 z-[58] bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
+          onClick={closeMenu}
+        />
+      )}
 
       <aside id="staggered-menu-panel" ref={panelRef} className="staggered-menu-panel righteous-regular" aria-hidden={!open}>
         <div className="sm-panel-inner">

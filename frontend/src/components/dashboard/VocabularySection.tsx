@@ -185,26 +185,26 @@ export default function VocabularySection() {
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-fadeIn righteous-regular text-[#0D0D0D]">
+    <div className="space-y-8 pb-12 animate-fadeIn text-[#0D0D0D] w-full max-w-full overflow-x-hidden">
       
       {/* HEADER BAR (DEEP PURPLE TO SLATE GRADIENT) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#433075] via-[#272A3B] to-[#0D0D0D] text-[#FAFAFA] border-2 border-[#A58CF4] shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-[#433075] via-[#272A3B] to-[#0D0D0D] text-[#FAFAFA] border-2 border-[#A58CF4] shadow-xl">
         <div>
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-[#A58CF4]/50 text-[#FAFAFA] text-xs font-black uppercase tracking-wider mb-2 shadow-inner">
-            <BookOpen className="w-3.5 h-3.5 text-[#A58CF4]" />
-            <span>AI Lexicon Vault & Semantic Matrix</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-[#A58CF4]/50 text-[#FAFAFA] text-xs sm:text-sm font-black uppercase tracking-wider mb-2 shadow-inner">
+            <BookOpen className="w-4 h-4 text-[#A58CF4]" />
+            <span>AI Lexicon Vault and Semantic Matrix</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
             Academic Vocabulary Repository
           </h1>
-          <p className="text-xs sm:text-sm text-[#F7F7F7] mt-1 font-normal">
+          <p className="text-sm sm:text-base text-[#F7F7F7] mt-1 font-extrabold">
             Curated high-tier terms equipped with phonetic synthesis, contextual essays, and active tagging.
           </p>
         </div>
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="px-6 py-3.5 rounded-2xl bg-white text-[#433075] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] hover:text-[#FAFAFA] font-black text-xs shadow-md transition-all duration-300 flex items-center gap-2 shrink-0 cursor-pointer active:scale-95 group border border-transparent hover:border-[#736A86]"
+          className="px-5 py-3 sm:px-6 sm:py-3.5 rounded-2xl bg-white text-[#433075] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] hover:text-[#FAFAFA] font-black text-xs sm:text-sm shadow-md transition-all duration-300 flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95 group border border-transparent hover:border-[#736A86]"
         >
           <Plus className="w-4 h-4 stroke-[3] group-hover:rotate-90 transition-transform" />
           <span>Add Custom Term</span>
@@ -212,55 +212,58 @@ export default function VocabularySection() {
       </div>
 
       {/* FILTER & SEARCH ROW */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#C8CED6] flex flex-wrap items-center justify-between gap-4 shadow-sm">
+      <div className="p-3.5 sm:p-5 rounded-3xl bg-white border border-[#C8CED6] flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 shadow-sm">
         {/* Search */}
-        <div className="relative flex-1 min-w-[260px]">
-          <Search className="absolute left-3.5 top-3 w-4 h-4 text-[#736A86] pointer-events-none" />
+        <div className="relative flex-1 min-w-full md:min-w-[240px]">
+          <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[#736A86] pointer-events-none" />
           <input
             type="text"
-            placeholder="Search by term name or definition content..."
+            placeholder="Search term or definition..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#736A86] focus:border-[#433075] focus:bg-white focus:outline-none text-xs text-[#0D0D0D] placeholder-[#736A86] font-bold transition-all shadow-inner"
+            className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#736A86] focus:border-[#433075] focus:bg-white focus:outline-none text-xs sm:text-sm text-[#0D0D0D] placeholder-[#736A86] font-black transition-all shadow-inner"
           />
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-black text-[#736A86] mr-1 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5 text-[#433075]" /> Category:
-          </span>
-          {["ALL", "Essential", "Advanced"].map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-300 cursor-pointer ${
-                selectedCategory === cat
-                  ? "bg-[#433075] text-[#FAFAFA] shadow-sm border border-[#A58CF4]"
-                  : "bg-[#F7F7F7] text-[#0D0D0D] border border-[#C8CED6] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] hover:text-[#FAFAFA] hover:border-transparent"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {/* Category & Status Filters Container */}
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full py-1">
+            <span className="text-xs sm:text-sm font-black text-[#736A86] shrink-0 flex items-center gap-1">
+              <Filter className="w-4 h-4 text-[#433075]" /> Cat:
+            </span>
+            {["ALL", "Essential", "Advanced"].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all duration-300 cursor-pointer shrink-0 ${
+                  selectedCategory === cat
+                    ? "bg-[#433075] text-[#FAFAFA] shadow-sm border border-[#A58CF4]"
+                    : "bg-[#F7F7F7] text-[#0D0D0D] border border-[#C8CED6] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] hover:text-[#FAFAFA]"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
 
-        {/* Status Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-black text-[#736A86] mr-1">Status:</span>
-          {["ALL", "Mastered", "Learning", "Review"].map((st) => (
-            <button
-              key={st}
-              onClick={() => setSelectedStatus(st)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-300 cursor-pointer ${
-                selectedStatus === st
-                  ? "bg-[#A58CF4] text-[#0D0D0D] font-black shadow-md border border-[#433075]"
-                  : "bg-[#F7F7F7] text-[#0D0D0D] border border-[#C8CED6] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] hover:text-[#FAFAFA] hover:border-transparent"
-              }`}
-            >
-              {st}
-            </button>
-          ))}
+          {/* Status Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full py-1">
+            <span className="text-xs font-black text-[#736A86] shrink-0">Status:</span>
+            {["ALL", "Mastered", "Learning", "Review"].map((st) => (
+              <button
+                key={st}
+                onClick={() => setSelectedStatus(st)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-300 cursor-pointer shrink-0 ${
+                  selectedStatus === st
+                    ? "bg-[#A58CF4] text-[#0D0D0D] font-black shadow-md border border-[#433075]"
+                    : "bg-[#F7F7F7] text-[#0D0D0D] border border-[#C8CED6] hover:bg-gradient-to-r hover:from-[#736A86] hover:to-[#272A3B] hover:text-[#FAFAFA]"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -418,28 +421,28 @@ export default function VocabularySection() {
       {/* ADD CUSTOM TERM MODAL */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn overflow-y-auto">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-lg p-6 sm:p-8 rounded-3xl bg-white border-2 border-[#433075] shadow-2xl space-y-6 relative text-[#0D0D0D]"
+              className="w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar p-4 sm:p-8 rounded-3xl bg-white border-2 border-[#433075] shadow-2xl space-y-4 sm:space-y-6 relative text-[#0D0D0D]"
             >
-              <div className="flex items-center justify-between border-b border-[#C8CED6] pb-4">
+              <div className="flex items-center justify-between border-b border-[#C8CED6] pb-3 sm:pb-4">
                 <div className="flex items-center gap-2">
                   <Plus className="w-5 h-5 text-[#433075]" />
-                  <h2 className="text-lg font-black text-[#0D0D0D]">Add Term to Lexicon Vault</h2>
+                  <h2 className="text-base sm:text-lg font-black text-[#0D0D0D]">Add Term to Lexicon Vault</h2>
                 </div>
                 <button
                   onClick={() => setIsAddModalOpen(false)}
-                  className="p-2 rounded-xl text-[#736A86] hover:text-[#0D0D0D] hover:bg-[#A58CF4] transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2 rounded-xl text-[#736A86] hover:text-[#0D0D0D] hover:bg-[#A58CF4] transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleCreateWord} className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleCreateWord} className="space-y-3.5 sm:space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-1">
                     <label className="font-black text-[#0D0D0D] uppercase text-[11px]">Vocabulary Term *</label>
                     <input
@@ -448,7 +451,7 @@ export default function VocabularySection() {
                       placeholder="e.g. Inexorable"
                       value={newWord.word}
                       onChange={(e) => setNewWord({ ...newWord, word: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#433075] focus:border-[#433075] focus:bg-white focus:outline-none text-[#0D0D0D] font-bold"
+                      className="w-full p-2.5 sm:p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#433075] focus:border-[#433075] focus:bg-white focus:outline-none text-[#0D0D0D] font-bold text-xs sm:text-sm"
                     />
                   </div>
                   <div className="space-y-1">
@@ -458,12 +461,12 @@ export default function VocabularySection() {
                       placeholder="e.g. /ɪˈnek.sər.ə.bl̩/"
                       value={newWord.phonetic}
                       onChange={(e) => setNewWord({ ...newWord, phonetic: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#433075] focus:border-[#433075] focus:bg-white focus:outline-none text-[#0D0D0D] font-bold"
+                      className="w-full p-2.5 sm:p-3 rounded-xl bg-[#F7F7F7] border border-[#C8CED6] hover:border-[#433075] focus:border-[#433075] focus:bg-white focus:outline-none text-[#0D0D0D] font-bold text-xs sm:text-sm"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-1">
                     <label className="font-black text-[#0D0D0D] uppercase text-[11px]">Part of Speech</label>
                     <CustomSelect

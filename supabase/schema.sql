@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     daily_target INTEGER DEFAULT 30,
     notifications_enabled BOOLEAN DEFAULT TRUE,
     streak_reminders_enabled BOOLEAN DEFAULT TRUE,
+    age TEXT,
+    occupation TEXT,
+    referral_source TEXT,
+    onboarding_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -35,6 +39,11 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
     FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Allow users to delete their own profile
+DROP POLICY IF EXISTS "Users can delete own profile" ON public.profiles;
+CREATE POLICY "Users can delete own profile" ON public.profiles
+    FOR DELETE USING (auth.uid() = id);
 
 -- ==========================================
 -- Automated Zero-Error Profile Creation Trigger
@@ -99,6 +108,38 @@ CREATE TABLE IF NOT EXISTS public.flashcards (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- ==========================================
+-- Migration Block: Backfill user_id on flashcards
+-- ==========================================
+DO $$
+DECLARE
+    orphan_count INTEGER;
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema='public' AND table_name='flashcards' AND column_name='user_id'
+    ) THEN
+        ALTER TABLE public.flashcards ADD COLUMN user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE;
+        
+        -- Backfill existing flashcards
+        UPDATE public.flashcards f
+        SET user_id = s.user_id
+        FROM public.study_sets s
+        WHERE f.set_id = s.id;
+        
+        -- Check for orphans
+        SELECT count(*) INTO orphan_count FROM public.flashcards WHERE user_id IS NULL;
+        IF orphan_count > 0 THEN
+            RAISE NOTICE 'Migration: Found % orphaned flashcards (missing parent study_set). Deleting them.', orphan_count;
+            DELETE FROM public.flashcards WHERE user_id IS NULL;
+        ELSE
+            RAISE NOTICE 'Migration: No orphaned flashcards found. Clean migration.';
+        END IF;
+        
+        ALTER TABLE public.flashcards ALTER COLUMN user_id SET NOT NULL;
+    END IF;
+END $$;
+
 ALTER TABLE public.study_sets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flashcards ENABLE ROW LEVEL SECURITY;
 
@@ -110,10 +151,14 @@ CREATE POLICY "Users can manage own study sets" ON public.study_sets FOR ALL USI
 
 DROP POLICY IF EXISTS "Allow read access to public flashcards" ON public.flashcards;
 CREATE POLICY "Allow read access to public flashcards" ON public.flashcards FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.study_sets WHERE id = set_id AND (is_public = TRUE OR user_id = auth.uid()))
+    (EXISTS (SELECT 1 FROM public.study_sets WHERE id = set_id AND is_public = TRUE)) OR user_id = auth.uid()
 );
 
-DROP POLICY IF EXISTS "Users can manage own flashcards" ON public.flashcards;
-CREATE POLICY "Users can manage own flashcards" ON public.flashcards FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.study_sets WHERE id = set_id AND user_id = auth.uid())
-);
+DROP POLICY IF EXISTS "Users can insert own flashcards" ON public.flashcards;
+CREATE POLICY "Users can insert own flashcards" ON public.flashcards FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own flashcards" ON public.flashcards;
+CREATE POLICY "Users can update own flashcards" ON public.flashcards FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own flashcards" ON public.flashcards;
+CREATE POLICY "Users can delete own flashcards" ON public.flashcards FOR DELETE USING (auth.uid() = user_id);
