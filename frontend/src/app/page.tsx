@@ -563,14 +563,6 @@ export default function AuthPortalPage() {
             By accessing WordNest, you agree to our <a href="#" className="underline text-[#C8CED6] hover:text-[#A58CF4]">Terms of Service</a> and <a href="#" className="underline text-[#C8CED6] hover:text-[#A58CF4]">Privacy Policy</a>.
           </p>
 
-          {/* Google Compliance App Info & Purpose Footer */}
-          <div className="mt-6 pt-4 border-t border-[#736A86]/30 text-center space-y-2 relative z-10">
-            <span className="text-[9px] font-black text-[#A58CF4] uppercase tracking-widest block">Application Profile</span>
-            <p className="text-[10px] text-[#C8CED6]/80 leading-relaxed max-w-[320px] mx-auto font-medium">
-              <strong>WordNest</strong> is an AI-powered academic vocabulary spaced-repetition training system designed to accelerate language retention, spelling mastery, and contextual sentence masteries.
-            </p>
-          </div>
-
         </div>
       </div>
     </div>
