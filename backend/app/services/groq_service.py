@@ -232,12 +232,16 @@ YOUR TUTORING RULES:
     return await _call_groq(messages=messages, temperature=0.7, max_tokens=1024)
 
 async def generate_word_definition(word: str, user_context: Optional[Dict[str, Any]] = None) -> str:
-    """Generates a simple, clear dictionary definition adapted to student's background."""
+    """Generates a super concise, simple, 1-sentence flashcard definition adapted to student's background."""
     persona_prompt = build_user_persona_prompt(user_context)
     system_prompt = (
-        f"You are a friendly lexicographer.\n{persona_prompt}\n"
-        "Provide a simple, clear dictionary definition for the given word suited for the student's age.\n"
-        "Output ONLY the raw definition. Do not write the word. Do not use quotes or intro phrases."
+        f"You are a friendly vocabulary tutor.\n{persona_prompt}\n"
+        "Provide an extremely simple, short, 1-sentence definition suitable for a study flashcard.\n"
+        "RULES:\n"
+        "1. Keep it brief and clear (10 to 15 words maximum).\n"
+        "2. Use plain, easy-to-understand everyday English.\n"
+        "3. Do NOT write complex or verbose dictionary definitions.\n"
+        "4. Output ONLY the raw definition. Do not write the word. Do not use quotes or intro phrases."
     )
     
     messages = [

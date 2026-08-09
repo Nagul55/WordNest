@@ -204,31 +204,34 @@ export const searchUnsplash = async (query: string): Promise<Array<{ id: string;
     const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(query)}&per_page=6`);
     if (res.ok) {
       const data = await res.json();
-      return data.results;
+      if (data.results && data.results.length > 0) {
+        return data.results;
+      }
     }
-    throw new Error("Offline");
+    throw new Error("Offline or no results");
   } catch (e) {
+    const encoded = encodeURIComponent(query.trim() || "study");
     return [
       {
-        id: "demo-u1",
-        url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80",
-        thumb: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200&auto=format&fit=crop&q=80",
-        alt_text: "Study table and laptop",
-        author: "Unsplash Pro"
+        id: `demo-${encoded}-1`,
+        url: `https://loremflickr.com/800/500/${encoded}?random=1`,
+        thumb: `https://loremflickr.com/400/250/${encoded}?random=1`,
+        alt_text: `${query} visual`,
+        author: "Visual Studio"
       },
       {
-        id: "demo-u2",
-        url: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&auto=format&fit=crop&q=80",
-        thumb: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=200&auto=format&fit=crop&q=80",
-        alt_text: "Textbooks and notebook reading",
-        author: "Unsplash Pro"
+        id: `demo-${encoded}-2`,
+        url: `https://image.pollinations.ai/prompt/photo%20of%20${encoded}?width=800&height=500&nologo=true`,
+        thumb: `https://image.pollinations.ai/prompt/photo%20of%20${encoded}?width=400&height=250&nologo=true`,
+        alt_text: `Photo of ${query}`,
+        author: "AI Studio"
       },
       {
-        id: "demo-u3",
-        url: "https://images.unsplash.com/photo-1507842229356-51c615049540?w=600&auto=format&fit=crop&q=80",
-        thumb: "https://images.unsplash.com/photo-1507842229356-51c615049540?w=200&auto=format&fit=crop&q=80",
-        alt_text: "Library shelf abstraction",
-        author: "Unsplash Pro"
+        id: `demo-${encoded}-3`,
+        url: `https://loremflickr.com/800/500/${encoded}?random=2`,
+        thumb: `https://loremflickr.com/400/250/${encoded}?random=2`,
+        alt_text: `${query} illustration`,
+        author: "Visual Studio"
       }
     ];
   }
