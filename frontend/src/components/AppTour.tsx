@@ -100,6 +100,29 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
+  // Elevate active step's target element z-index so it sits above backdrop blur, 100% visible & unblurred!
+  useEffect(() => {
+    if (!isOpen || showPrompt || isCompleted) return;
+
+    const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
+    if (!stepConfig) return;
+
+    const el = document.getElementById(stepConfig.targetId);
+    if (!el) return;
+
+    const originalZIndex = el.style.zIndex;
+    const originalPosition = el.style.position;
+
+    // Elevate target element
+    el.style.position = "relative";
+    el.style.zIndex = "9995";
+
+    return () => {
+      el.style.zIndex = originalZIndex;
+      el.style.position = originalPosition;
+    };
+  }, [isOpen, showPrompt, isCompleted, stepIndex]);
+
   // STRICT CLICK LOCKOUT & TARGET ACTION EXECUTION
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
@@ -200,6 +223,13 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     }
   };
 
+  // Dimensions for rounded cutout spotlight
+  const pad = 6;
+  const left = targetRect ? Math.max(0, targetRect.left - pad) : 0;
+  const top = targetRect ? Math.max(0, targetRect.top - pad) : 0;
+  const width = targetRect ? targetRect.width + pad * 2 : 0;
+  const height = targetRect ? targetRect.height + pad * 2 : 0;
+
   return (
     <AnimatePresence>
       {/* 1. STARTING TOUR PROMPT MODAL */}
@@ -283,11 +313,38 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           </motion.div>
         </div>
       ) : (
-        /* 2. REAL-TIME SMOOTH BACKDROP BLUR OVERLAY WITH SOFT GLOWING SPOTLIGHT HALO */
+        /* 2. REAL-TIME SMOOTH BACKDROP BLUR MASK WITH SMOOTH ROUNDED CORNER CUTOUT & ELEVATED TARGET */
         <div className="fixed inset-0 z-[9985] select-none pointer-events-none">
           
-          {/* SMOOTH BACKDROP BLUR LAYER */}
-          <div className="fixed inset-0 bg-[#09090c]/50 backdrop-blur-[3px] transition-all duration-300 pointer-events-none" />
+          {/* SVG MASK BACKDROP WITH ROUNDED RECTANGLE CUTOUT FOR UNBLURRED VISIBILITY */}
+          <svg className="fixed inset-0 w-full h-full z-[9980] pointer-events-none">
+            <defs>
+              <mask id="tour-spotlight-mask">
+                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                {targetRect && (
+                  <rect
+                    x={left}
+                    y={top}
+                    width={width}
+                    height={height}
+                    rx={20}
+                    ry={20}
+                    fill="black"
+                  />
+                )}
+              </mask>
+            </defs>
+
+            <rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="rgba(9, 9, 12, 0.65)"
+              mask="url(#tour-spotlight-mask)"
+              className="backdrop-blur-md"
+            />
+          </svg>
 
           {/* SOFT ROUNDED SPOTLIGHT GLOW HALO AROUND TARGET BUTTON */}
           {targetRect && (
@@ -296,13 +353,13 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               animate={{ opacity: 1, scale: 1 }}
               style={{
                 position: "fixed",
-                left: targetRect.left - 8,
-                top: targetRect.top - 8,
-                width: targetRect.width + 16,
-                height: targetRect.height + 16,
-                borderRadius: 24,
+                left: left,
+                top: top,
+                width: width,
+                height: height,
+                borderRadius: 20,
                 border: "2px solid #5227FF",
-                boxShadow: "0 0 35px 8px rgba(82, 39, 255, 0.65), inset 0 0 15px rgba(82, 39, 255, 0.35)",
+                boxShadow: "0 0 30px 6px rgba(82, 39, 255, 0.7), inset 0 0 12px rgba(82, 39, 255, 0.3)",
                 pointerEvents: "none",
                 zIndex: 9992
               }}
@@ -319,7 +376,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
                 position: "fixed",
                 left: targetRect.left + targetRect.width / 2 - 18,
                 top: Math.max(8, targetRect.top - 48),
-                zIndex: 9995,
+                zIndex: 9996,
                 pointerEvents: "none"
               }}
               className="flex flex-col items-center text-[#5227FF] drop-shadow-[0_4px_16px_rgba(82,39,255,0.9)]"
