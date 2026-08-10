@@ -261,7 +261,7 @@ export default function OnboardingFlow({ user, initialProfile, onComplete }: Onb
               <Check className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h3 className="text-2xl font-extrabold text-white mb-1 tracking-tight">Setup Complete! 🎉</h3>
+          <h3 className="text-2xl font-extrabold text-white mb-1 tracking-tight">Setup Complete</h3>
           <p className="text-xs text-zinc-400">Launching your WordNest Dashboard...</p>
         </div>
       )}
