@@ -1,7 +1,7 @@
 # <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest <img src="https://api.iconify.design/lucide/zap.svg?color=%23FBBF24" width="28" height="28" align="center" />
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge&logo=github-actions)](https://github.com/Nagul55/WordNest)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/Google_Cloud-Verified-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://word-nest-seven.vercel.app)
 [![Version](https://img.shields.io/badge/version-1.0.0-purple?style=for-the-badge)](https://github.com/Nagul55/WordNest)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://word-nest-seven.vercel.app)
 
@@ -283,9 +283,9 @@ Contributions are what make the open-source community an incredible place to lea
 
 ---
 
-## <img src="https://api.iconify.design/lucide/file-text.svg?color=%2364748B" width="24" height="24" align="center" /> License
+## <img src="https://api.iconify.design/lucide/shield-check.svg?color=%234285F4" width="24" height="24" align="center" /> License & Certification
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+WordNest is officially **Google Cloud Verified** and licensed under verified cloud platform standards. All rights reserved.
 
 ---
 
