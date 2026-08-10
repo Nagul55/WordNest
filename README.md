@@ -39,11 +39,11 @@ Traditional flashcard platforms rely on manual input and static repetition, lead
 
 | <img src="https://api.iconify.design/lucide/layers.svg?color=%23A58CF4" width="18" height="18" align="center" /> Interactive 3D Study Deck | <img src="https://api.iconify.design/lucide/target.svg?color=%23EC4899" width="18" height="18" align="center" /> AI Contextual Sentence Evaluator |
 | :---: | :---: |
-| ![Flashcard Interface](docs/screenshots/flashcards.png) <br> *3D flip card physics with multi-language TTS audio & cover photos* | ![AI Evaluator](docs/screenshots/ai-evaluator.png) <br> *Real-time AI grammar scoring & natural sentence corrections* |
+| <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/docs/screenshots/flashcards.png" alt="Interactive 3D Study Deck" width="100%" /> <br> *3D flip card physics with multi-language TTS audio & cover photos* | <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/docs/screenshots/ai-evaluator.png" alt="AI Contextual Sentence Evaluator" width="100%" /> <br> *Real-time AI grammar scoring & natural sentence corrections* |
 
 | <img src="https://api.iconify.design/lucide/timer.svg?color=%2310B981" width="18" height="18" align="center" /> Speed Match Blitz Arena | <img src="https://api.iconify.design/lucide/image.svg?color=%2306B6D4" width="18" height="18" align="center" /> Unsplash & Dynamic Visual Studio |
 | :---: | :---: |
-| ![Match Game](docs/screenshots/match-game.png) <br> *Stopwatch-timed tile matching blitz with highscore tracking* | ![Unsplash Modal](docs/screenshots/image-picker.png) <br> *Real-time Unsplash search drawer & dynamic AI fallbacks* |
+| <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/docs/screenshots/match-game.png" alt="Speed Match Blitz Arena" width="100%" /> <br> *Stopwatch-timed tile matching blitz with highscore tracking* | <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/docs/screenshots/image-picker.png" alt="Unsplash & Dynamic Visual Studio" width="100%" /> <br> *Real-time Unsplash search drawer & dynamic AI fallbacks* |
 
 ---
 
