@@ -37,13 +37,13 @@ Traditional flashcard platforms rely on manual input and static repetition, lead
 
 ## <img src="https://api.iconify.design/lucide/camera.svg?color=%2306B6D4" width="24" height="24" align="center" /> Screenshots & Preview
 
-| <img src="https://api.iconify.design/lucide/layers.svg?color=%23A58CF4" width="18" height="18" align="center" /> Interactive 3D Study Deck | <img src="https://api.iconify.design/lucide/bot.svg?color=%23EC4899" width="18" height="18" align="center" /> Socratic AI Tutor & Notes |
+| <img src="https://api.iconify.design/lucide/layers.svg?color=%23A58CF4" width="18" height="18" align="center" /> Interactive 3D Study Deck | <img src="https://api.iconify.design/lucide/target.svg?color=%23EC4899" width="18" height="18" align="center" /> AI Contextual Sentence Evaluator |
 | :---: | :---: |
-| ![Flashcard Interface](docs/screenshots/flashcards.png) <br> *3D flip card physics with multi-language TTS audio* | ![Socratic AI Tutor](docs/screenshots/ai-tutor.png) <br> *Interactive conversational tutor with Socratic feedback* |
+| ![Flashcard Interface](docs/screenshots/flashcards.png) <br> *3D flip card physics with multi-language TTS audio & cover photos* | ![AI Evaluator](docs/screenshots/ai-tutor.png) <br> *Real-time AI grammar scoring & natural sentence corrections* |
 
-| <img src="https://api.iconify.design/lucide/timer.svg?color=%2310B981" width="18" height="18" align="center" /> High-Speed Match Arena | <img src="https://api.iconify.design/lucide/image.svg?color=%2306B6D4" width="18" height="18" align="center" /> Unsplash & Dynamic Visuals |
+| <img src="https://api.iconify.design/lucide/timer.svg?color=%2310B981" width="18" height="18" align="center" /> Speed Match Blitz Arena | <img src="https://api.iconify.design/lucide/image.svg?color=%2306B6D4" width="18" height="18" align="center" /> Unsplash & Dynamic Visual Studio |
 | :---: | :---: |
-| ![Match Game](docs/screenshots/match-game.png) <br> *Stopwatch-timed matching game with highscores* | ![Unsplash Modal](docs/screenshots/image-picker.png) <br> *Real-time Unsplash search & dynamic AI image fallback* |
+| ![Match Game](docs/screenshots/match-game.png) <br> *Stopwatch-timed tile matching blitz with highscore tracking* | ![Unsplash Modal](docs/screenshots/image-picker.png) <br> *Real-time Unsplash search drawer & dynamic AI fallbacks* |
 
 ---
 
