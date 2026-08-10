@@ -1,4 +1,4 @@
-# <img src="frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest <img src="https://api.iconify.design/lucide/zap.svg?color=%23433075" width="28" height="28" align="center" />
+# <img src="frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest <img src="https://api.iconify.design/lucide/zap.svg?color=%23FBBF24" width="28" height="28" align="center" />
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge&logo=github-actions)](https://github.com/Nagul55/WordNest)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
@@ -13,56 +13,56 @@
 
 ---
 
-## <img src="https://api.iconify.design/lucide/list-tree.svg?color=%23433075" width="24" height="24" align="center" /> Table of Contents
-- [<img src="https://api.iconify.design/lucide/lightbulb.svg?color=%23433075" width="16" height="16" align="center" /> Why WordNest?](#-why-wordnest)
-- [<img src="https://api.iconify.design/lucide/camera.svg?color=%23433075" width="16" height="16" align="center" /> Screenshots & Preview](#-screenshots--preview)
-- [<img src="https://api.iconify.design/lucide/sparkles.svg?color=%23433075" width="16" height="16" align="center" /> Key Features](#-key-features)
-- [<img src="https://api.iconify.design/lucide/wrench.svg?color=%23433075" width="16" height="16" align="center" /> Tech Stack](#-tech-stack)
-- [<img src="https://api.iconify.design/lucide/zap.svg?color=%23433075" width="16" height="16" align="center" /> Quick Start](#-quick-start)
-- [<img src="https://api.iconify.design/lucide/folder-tree.svg?color=%23433075" width="16" height="16" align="center" /> Project Structure](#-project-structure)
-- [<img src="https://api.iconify.design/lucide/plug-zap.svg?color=%23433075" width="16" height="16" align="center" /> API Reference](#-api-reference)
-- [<img src="https://api.iconify.design/lucide/flask-conical.svg?color=%23433075" width="16" height="16" align="center" /> Testing](#-testing)
-- [<img src="https://api.iconify.design/lucide/rocket.svg?color=%23433075" width="16" height="16" align="center" /> Deployment](#-deployment)
-- [<img src="https://api.iconify.design/lucide/users.svg?color=%23433075" width="16" height="16" align="center" /> Contributing](#-contributing)
-- [<img src="https://api.iconify.design/lucide/file-text.svg?color=%23433075" width="16" height="16" align="center" /> License](#-license)
-- [<img src="https://api.iconify.design/lucide/user-check.svg?color=%23433075" width="16" height="16" align="center" /> Author & Contact](#-author--contact)
+## <img src="https://api.iconify.design/lucide/list-tree.svg?color=%23A58CF4" width="24" height="24" align="center" /> Table of Contents
+- [<img src="https://api.iconify.design/lucide/lightbulb.svg?color=%23F59E0B" width="16" height="16" align="center" /> Why WordNest?](#-why-wordnest)
+- [<img src="https://api.iconify.design/lucide/camera.svg?color=%2306B6D4" width="16" height="16" align="center" /> Screenshots & Preview](#-screenshots--preview)
+- [<img src="https://api.iconify.design/lucide/sparkles.svg?color=%23EC4899" width="16" height="16" align="center" /> Key Features](#-key-features)
+- [<img src="https://api.iconify.design/lucide/wrench.svg?color=%233B82F6" width="16" height="16" align="center" /> Tech Stack](#-tech-stack)
+- [<img src="https://api.iconify.design/lucide/zap.svg?color=%23FBBF24" width="16" height="16" align="center" /> Quick Start](#-quick-start)
+- [<img src="https://api.iconify.design/lucide/folder-tree.svg?color=%2310B981" width="16" height="16" align="center" /> Project Structure](#-project-structure)
+- [<img src="https://api.iconify.design/lucide/plug-zap.svg?color=%238B5CF6" width="16" height="16" align="center" /> API Reference](#-api-reference)
+- [<img src="https://api.iconify.design/lucide/flask-conical.svg?color=%233B82F6" width="16" height="16" align="center" /> Testing](#-testing)
+- [<img src="https://api.iconify.design/lucide/rocket.svg?color=%23F43F5E" width="16" height="16" align="center" /> Deployment](#-deployment)
+- [<img src="https://api.iconify.design/lucide/users.svg?color=%236366F1" width="16" height="16" align="center" /> Contributing](#-contributing)
+- [<img src="https://api.iconify.design/lucide/file-text.svg?color=%2364748B" width="16" height="16" align="center" /> License](#-license)
+- [<img src="https://api.iconify.design/lucide/user-check.svg?color=%23A58CF4" width="16" height="16" align="center" /> Author & Contact](#-author--contact)
 
 ---
 
-## <img src="https://api.iconify.design/lucide/lightbulb.svg?color=%23433075" width="24" height="24" align="center" /> Why WordNest?
+## <img src="https://api.iconify.design/lucide/lightbulb.svg?color=%23F59E0B" width="24" height="24" align="center" /> Why WordNest?
 
 Traditional flashcard platforms rely on manual input and static repetition, leading to study fatigue and inefficient learning. **WordNest** bridges this gap by combining **Socratic AI tutoring**, **instant AI deck generation from raw notes**, and **semantic sentence grading** into a sleek, ultra-responsive web platform designed for students and life-long learners.
 
 ---
 
-## <img src="https://api.iconify.design/lucide/camera.svg?color=%23433075" width="24" height="24" align="center" /> Screenshots & Preview
+## <img src="https://api.iconify.design/lucide/camera.svg?color=%2306B6D4" width="24" height="24" align="center" /> Screenshots & Preview
 
-| <img src="https://api.iconify.design/lucide/layers.svg?color=%23433075" width="18" height="18" align="center" /> Interactive 3D Study Deck | <img src="https://api.iconify.design/lucide/bot.svg?color=%23433075" width="18" height="18" align="center" /> Socratic AI Tutor & Notes |
+| <img src="https://api.iconify.design/lucide/layers.svg?color=%23A58CF4" width="18" height="18" align="center" /> Interactive 3D Study Deck | <img src="https://api.iconify.design/lucide/bot.svg?color=%23EC4899" width="18" height="18" align="center" /> Socratic AI Tutor & Notes |
 | :---: | :---: |
 | ![Flashcard Interface](docs/screenshots/flashcards.png) <br> *3D flip card physics with multi-language TTS audio* | ![Socratic AI Tutor](docs/screenshots/ai-tutor.png) <br> *Interactive conversational tutor with Socratic feedback* |
 
-| <img src="https://api.iconify.design/lucide/timer.svg?color=%23433075" width="18" height="18" align="center" /> High-Speed Match Arena | <img src="https://api.iconify.design/lucide/image.svg?color=%23433075" width="18" height="18" align="center" /> Unsplash & Dynamic Visuals |
+| <img src="https://api.iconify.design/lucide/timer.svg?color=%2310B981" width="18" height="18" align="center" /> High-Speed Match Arena | <img src="https://api.iconify.design/lucide/image.svg?color=%2306B6D4" width="18" height="18" align="center" /> Unsplash & Dynamic Visuals |
 | :---: | :---: |
 | ![Match Game](docs/screenshots/match-game.png) <br> *Stopwatch-timed matching game with highscores* | ![Unsplash Modal](docs/screenshots/image-picker.png) <br> *Real-time Unsplash search & dynamic AI image fallback* |
 
 ---
 
-## <img src="https://api.iconify.design/lucide/sparkles.svg?color=%23433075" width="24" height="24" align="center" /> Key Features
+## <img src="https://api.iconify.design/lucide/sparkles.svg?color=%23EC4899" width="24" height="24" align="center" /> Key Features
 
 | Icon | Feature Name | Description | Tech Used |
 | :---: | :--- | :--- | :--- |
-| <img src="https://api.iconify.design/lucide/layers.svg?color=%23433075" width="20" height="20" /> | **3D Realistic Flashcards** | Hardware-accelerated 3D flip card physics with Web Speech API multi-lingual TTS pronunciation and keyboard navigation (`Space`, `Arrows`). | Next.js, Framer Motion, Web Speech API |
-| <img src="https://api.iconify.design/lucide/wand-2.svg?color=%23433075" width="20" height="20" /> | **AI Magic Notes Studio** | Converts raw lecture transcripts, essays, or notes into structured summary outlines, flashcards, and multiple-choice quizzes in seconds. | Groq Cloud (Llama 3.1), FastAPI, OpenAI SDK |
-| <img src="https://api.iconify.design/lucide/graduation-cap.svg?color=%23433075" width="20" height="20" /> | **Socratic AI Tutor** | Conversational AI study assistant that quizzes students using the Socratic method to build intuitive conceptual understanding. | Groq Llama 3.1, Python AsyncIO |
-| <img src="https://api.iconify.design/lucide/target.svg?color=%23433075" width="20" height="20" /> | **Adaptive Learn Mode** | Spaced-repetition algorithm graduating terms from multiple choice to AI-graded written assessments based on student mastery. | TypeScript, FastAPI, Custom SM-2 Engine |
-| <img src="https://api.iconify.design/lucide/timer.svg?color=%23433075" width="20" height="20" /> | **High-Speed Match Arena** | Time-trial tile matching game with real-time timers, personal best trackers, and celebratory confetti effects. | Canvas Confetti, Framer Motion |
-| <img src="https://api.iconify.design/lucide/image.svg?color=%23433075" width="20" height="20" /> | **Unsplash & Dynamic Visuals** | Instant HD photo assignment via Unsplash API with automatic fallbacks to Pollinations AI & LoremFlickr for 100% image coverage. | Unsplash API, HTTPX, Pollinations AI |
-| <img src="https://api.iconify.design/lucide/folder-closed.svg?color=%23433075" width="20" height="20" /> | **Interactive 3D Folders** | Customized animated 3D folder decks that react dynamically to mouse position and hover states. | React Bits, Custom CSS 3D |
-| <img src="https://api.iconify.design/lucide/user-cog.svg?color=%23433075" width="20" height="20" /> | **Adaptive Student Persona** | Tailors AI vocabulary definitions, tone, and tutor analogies based on the student's age, username, and occupation. | Supabase Auth, Groq Prompt Engine |
+| <img src="https://api.iconify.design/lucide/layers.svg?color=%23A58CF4" width="20" height="20" /> | **3D Realistic Flashcards** | Hardware-accelerated 3D flip card physics with Web Speech API multi-lingual TTS pronunciation and keyboard navigation (`Space`, `Arrows`). | Next.js, Framer Motion, Web Speech API |
+| <img src="https://api.iconify.design/lucide/wand-2.svg?color=%23EC4899" width="20" height="20" /> | **AI Magic Notes Studio** | Converts raw lecture transcripts, essays, or notes into structured summary outlines, flashcards, and multiple-choice quizzes in seconds. | Groq Cloud (Llama 3.1), FastAPI, OpenAI SDK |
+| <img src="https://api.iconify.design/lucide/graduation-cap.svg?color=%23F59E0B" width="20" height="20" /> | **Socratic AI Tutor** | Conversational AI study assistant that quizzes students using the Socratic method to build intuitive conceptual understanding. | Groq Llama 3.1, Python AsyncIO |
+| <img src="https://api.iconify.design/lucide/target.svg?color=%23EF4444" width="20" height="20" /> | **Adaptive Learn Mode** | Spaced-repetition algorithm graduating terms from multiple choice to AI-graded written assessments based on student mastery. | TypeScript, FastAPI, Custom SM-2 Engine |
+| <img src="https://api.iconify.design/lucide/timer.svg?color=%2310B981" width="20" height="20" /> | **High-Speed Match Arena** | Time-trial tile matching game with real-time timers, personal best trackers, and celebratory confetti effects. | Canvas Confetti, Framer Motion |
+| <img src="https://api.iconify.design/lucide/image.svg?color=%2306B6D4" width="20" height="20" /> | **Unsplash & Dynamic Visuals** | Instant HD photo assignment via Unsplash API with automatic fallbacks to Pollinations AI & LoremFlickr for 100% image coverage. | Unsplash API, HTTPX, Pollinations AI |
+| <img src="https://api.iconify.design/lucide/folder-closed.svg?color=%238B5CF6" width="20" height="20" /> | **Interactive 3D Folders** | Customized animated 3D folder decks that react dynamically to mouse position and hover states. | React Bits, Custom CSS 3D |
+| <img src="https://api.iconify.design/lucide/user-cog.svg?color=%233B82F6" width="20" height="20" /> | **Adaptive Student Persona** | Tailors AI vocabulary definitions, tone, and tutor analogies based on the student's age, username, and occupation. | Supabase Auth, Groq Prompt Engine |
 
 ---
 
-## <img src="https://api.iconify.design/lucide/wrench.svg?color=%23433075" width="24" height="24" align="center" /> Tech Stack
+## <img src="https://api.iconify.design/lucide/wrench.svg?color=%233B82F6" width="24" height="24" align="center" /> Tech Stack
 
 ### **Frontend**
 ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
@@ -93,7 +93,7 @@ Traditional flashcard platforms rely on manual input and static repetition, lead
 
 ---
 
-## <img src="https://api.iconify.design/lucide/zap.svg?color=%23433075" width="24" height="24" align="center" /> Quick Start
+## <img src="https://api.iconify.design/lucide/zap.svg?color=%23FBBF24" width="24" height="24" align="center" /> Quick Start
 
 ### **Prerequisites**
 - **Node.js**: `v18.0.0` or higher
@@ -182,7 +182,7 @@ npm run dev
 
 ---
 
-## <img src="https://api.iconify.design/lucide/folder-tree.svg?color=%23433075" width="24" height="24" align="center" /> Project Structure
+## <img src="https://api.iconify.design/lucide/folder-tree.svg?color=%2310B981" width="24" height="24" align="center" /> Project Structure
 
 ```bash
 WordNest/
@@ -217,7 +217,7 @@ WordNest/
 
 ---
 
-## <img src="https://api.iconify.design/lucide/plug-zap.svg?color=%23433075" width="24" height="24" align="center" /> API Reference
+## <img src="https://api.iconify.design/lucide/plug-zap.svg?color=%238B5CF6" width="24" height="24" align="center" /> API Reference
 
 ### **AI Endpoints (`/api/ai`)**
 
@@ -236,7 +236,7 @@ WordNest/
 
 ---
 
-## <img src="https://api.iconify.design/lucide/flask-conical.svg?color=%23433075" width="24" height="24" align="center" /> Testing
+## <img src="https://api.iconify.design/lucide/flask-conical.svg?color=%233B82F6" width="24" height="24" align="center" /> Testing
 
 ### **Frontend Verification & Production Build**
 To test component rendering and type safety across all responsive viewports:
@@ -254,7 +254,7 @@ python -c "import urllib.request; req = urllib.request.Request('http://localhost
 
 ---
 
-## <img src="https://api.iconify.design/lucide/rocket.svg?color=%23433075" width="24" height="24" align="center" /> Deployment
+## <img src="https://api.iconify.design/lucide/rocket.svg?color=%23F43F5E" width="24" height="24" align="center" /> Deployment
 
 ### **Frontend (Vercel)**
 The frontend is pre-configured for instant one-click deployment on Vercel:
@@ -271,7 +271,7 @@ The frontend is pre-configured for instant one-click deployment on Vercel:
 
 ---
 
-## <img src="https://api.iconify.design/lucide/users.svg?color=%23433075" width="24" height="24" align="center" /> Contributing
+## <img src="https://api.iconify.design/lucide/users.svg?color=%236366F1" width="24" height="24" align="center" /> Contributing
 
 Contributions are what make the open-source community an incredible place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
@@ -283,24 +283,24 @@ Contributions are what make the open-source community an incredible place to lea
 
 ---
 
-## <img src="https://api.iconify.design/lucide/file-text.svg?color=%23433075" width="24" height="24" align="center" /> License
+## <img src="https://api.iconify.design/lucide/file-text.svg?color=%2364748B" width="24" height="24" align="center" /> License
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
 
 ---
 
-## <img src="https://api.iconify.design/lucide/user-check.svg?color=%23433075" width="24" height="24" align="center" /> Author & Contact
+## <img src="https://api.iconify.design/lucide/user-check.svg?color=%23A58CF4" width="24" height="24" align="center" /> Author & Contact
 
 **Nagul G**  
 Full-Stack Developer & AI Systems Architect
 
-- 🌐 **Live Application**: [WordNest Web App](https://word-nest-seven.vercel.app)
-- 🐙 **GitHub**: [@Nagul55](https://github.com/Nagul55)
-- 💼 **LinkedIn**: [nagul-g](https://www.linkedin.com/in/nagul-g)
-- 🐦 **Twitter**: [@Nagul_55](https://x.com/Nagul_55)
+- <img src="frontend/public/Wordnest.svg" alt="WordNest Logo" width="18" height="18" align="center" /> **Live Application**: [WordNest Web App](https://word-nest-seven.vercel.app)
+- <img src="https://api.iconify.design/simple-icons/github.svg?color=%239CA3AF" alt="GitHub Logo" width="18" height="18" align="center" /> **GitHub**: [@Nagul55](https://github.com/Nagul55)
+- <img src="https://api.iconify.design/simple-icons/linkedin.svg?color=%230A66C2" alt="LinkedIn Logo" width="18" height="18" align="center" /> **LinkedIn**: [nagul-g](https://www.linkedin.com/in/nagul-g)
+- <img src="https://api.iconify.design/simple-icons/x.svg?color=%231DA1F2" alt="Twitter/X Logo" width="18" height="18" align="center" /> **Twitter**: [@Nagul_55](https://x.com/Nagul_55)
 
 ---
 
 <p align="center">
-  Made with <img src="https://api.iconify.design/lucide/heart.svg?color=%23e11d48" width="16" height="16" align="center" /> for students worldwide by Nagul G. If you find WordNest helpful, please give it a ⭐ on GitHub!
+  Made with <img src="https://api.iconify.design/lucide/heart.svg?color=%23F43F5E" width="16" height="16" align="center" /> for students worldwide by Nagul G. If you find WordNest helpful, please give it a ⭐ on GitHub!
 </p>
