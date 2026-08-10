@@ -1,4 +1,4 @@
-# WordNest ⚡
+# <img src="frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest ⚡
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge&logo=github-actions)](https://github.com/Nagul55/WordNest)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
