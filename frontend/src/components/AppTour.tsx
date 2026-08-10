@@ -9,12 +9,7 @@ import {
   ChevronRight, 
   ChevronLeft, 
   Check, 
-  MousePointer, 
-  Sparkles,
-  ArrowUp,
-  ArrowRight,
-  ArrowDown,
-  ArrowLeft
+  ArrowDown
 } from "lucide-react";
 
 export type NavSection = "home" | "decks" | "practice" | "progress" | "settings";
@@ -31,7 +26,6 @@ interface StepTargetConfig {
   targetId: string;
   title: string;
   instruction: string;
-  tooltipPosition?: "left" | "right" | "top" | "bottom";
   fallbackTab?: NavSection;
 }
 
@@ -40,37 +34,32 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     stepIndex: 1,
     targetId: "tour-menu-toggle-btn",
     title: "1. Open Main Menu",
-    instruction: "Click the menu button in the top-right corner to open navigation.",
-    tooltipPosition: "bottom"
+    instruction: "Click the menu button in the top-right corner to open navigation."
   },
   {
     stepIndex: 2,
     targetId: "tour-menu-item-decks",
     title: "2. Select Decks",
-    instruction: "Click 'Decks' in the menu to open your study library.",
-    tooltipPosition: "left"
+    instruction: "Click 'Decks' in the menu to open your study library."
   },
   {
     stepIndex: 3,
     targetId: "tour-create-deck-btn",
     title: "3. Create First Deck",
     instruction: "Click the 'Create New Deck' button to start building your first study folder.",
-    tooltipPosition: "bottom",
     fallbackTab: "decks"
   },
   {
     stepIndex: 4,
     targetId: "tour-deck-name-input",
     title: "4. Name Your Deck",
-    instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'.",
-    tooltipPosition: "top"
+    instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'."
   },
   {
     stepIndex: 5,
     targetId: "tour-add-word-btn",
     title: "5. Add Your First Word",
-    instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
-    tooltipPosition: "top"
+    instruction: "Click 'Add Word' to save your first vocabulary term in this deck."
   }
 ];
 
@@ -80,7 +69,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
 
-  // Update target element coordinates dynamically
+  // Compute exact coordinates of targeted element
   const updateTargetCoordinates = useCallback(() => {
     if (showPrompt || isCompleted) return;
     const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
@@ -91,7 +80,6 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       const rect = el.getBoundingClientRect();
       setTargetRect(rect);
     } else {
-      // Fallback tab navigation if target isn't visible yet
       if (stepConfig.fallbackTab) {
         onNavigateTab(stepConfig.fallbackTab);
       }
@@ -101,7 +89,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
   useEffect(() => {
     updateTargetCoordinates();
-    const interval = setInterval(updateTargetCoordinates, 300);
+    const interval = setInterval(updateTargetCoordinates, 250);
     window.addEventListener("resize", updateTargetCoordinates);
     window.addEventListener("scroll", updateTargetCoordinates, true);
 
@@ -112,27 +100,58 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
-  // Click listeners to auto-advance interactive steps
+  // STRICT CLICK LOCKOUT: Restrict user from clicking anything on the page EXCEPT active step target & tour card controls!
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
 
-    const handleDocumentClick = (e: MouseEvent) => {
+    const handleGlobalInteraction = (e: MouseEvent | TouchEvent) => {
+      const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
+      if (!stepConfig) return;
+
+      const targetEl = document.getElementById(stepConfig.targetId);
+      const cardEl = document.getElementById("tour-floating-card");
+
+      const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
+      const isCardClick = cardEl && (cardEl.contains(e.target as Node) || e.target === cardEl);
+
+      // Block click if it is NOT on the active target or tour card
+      if (!isTargetClick && !isCardClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+    };
+
+    document.addEventListener("click", handleGlobalInteraction, true);
+    document.addEventListener("mousedown", handleGlobalInteraction, true);
+    document.addEventListener("touchstart", handleGlobalInteraction, true);
+
+    return () => {
+      document.removeEventListener("click", handleGlobalInteraction, true);
+      document.removeEventListener("mousedown", handleGlobalInteraction, true);
+      document.removeEventListener("touchstart", handleGlobalInteraction, true);
+    };
+  }, [isOpen, showPrompt, stepIndex, isCompleted]);
+
+  // Auto-advance step when user performs the action on the target element
+  useEffect(() => {
+    if (!isOpen || showPrompt || isCompleted) return;
+
+    const handleTargetActionClick = (e: MouseEvent) => {
       const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
       if (!stepConfig) return;
 
       const targetEl = document.getElementById(stepConfig.targetId);
       if (targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl)) {
-        // Auto-advance step after small delay for action execution
         setTimeout(() => {
           if (stepIndex < INTERACTIVE_STEPS.length) {
             setStepIndex(prev => prev + 1);
           } else {
-            // Tour finished!
             setIsCompleted(true);
             try {
               confetti({
-                particleCount: 150,
-                spread: 80,
+                particleCount: 160,
+                spread: 90,
                 origin: { y: 0.3 }
               });
             } catch (err) {
@@ -143,8 +162,8 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       }
     };
 
-    document.addEventListener("click", handleDocumentClick, true);
-    return () => document.removeEventListener("click", handleDocumentClick, true);
+    document.addEventListener("click", handleTargetActionClick, true);
+    return () => document.removeEventListener("click", handleTargetActionClick, true);
   }, [isOpen, showPrompt, stepIndex, isCompleted]);
 
   if (!isOpen) return null;
@@ -176,11 +195,22 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     }
   };
 
+  // Prepare Clip Path Polygon for Blur Backdrop Cutout Spotlight
+  const pad = 8;
+  const left = targetRect ? Math.max(0, targetRect.left - pad) : 0;
+  const top = targetRect ? Math.max(0, targetRect.top - pad) : 0;
+  const right = targetRect ? targetRect.right + pad : 0;
+  const bottom = targetRect ? targetRect.bottom + pad : 0;
+
+  const clipPathString = targetRect
+    ? `polygon(0% 0%, 0% 100%, ${left}px 100%, ${left}px ${top}px, ${right}px ${top}px, ${right}px ${bottom}px, ${left}px ${bottom}px, ${left}px 100%, 100% 100%, 100% 0%)`
+    : undefined;
+
   return (
     <AnimatePresence>
-      {/* 1. STARTING TOUR PROMPT MODAL (Small, compact, matching Stepper style with WordNest logo SVG) */}
+      {/* 1. STARTING TOUR PROMPT MODAL */}
       {showPrompt ? (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 xs:p-4 bg-[#09090c]/80 backdrop-blur-sm select-none">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 xs:p-4 bg-[#09090c]/85 backdrop-blur-md select-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -235,7 +265,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         </div>
       ) : isCompleted ? (
         /* 3. COMPLETION MODAL */
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#09090c]/85 backdrop-blur-sm select-none">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[#09090c]/85 backdrop-blur-md select-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -259,27 +289,33 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           </motion.div>
         </div>
       ) : (
-        /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
-        <div className="fixed inset-0 z-[999] pointer-events-none select-none">
-          {/* Subtle dimming layer */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none" />
+        /* 2. REAL-TIME SPOTLIGHT BLUR CUTOUT & STRICT CLICK LOCKOUT OVERLAY */
+        <div className="fixed inset-0 z-[9985] select-none">
+          
+          {/* HEAVY BACKDROP BLUR MASK WITH CUTOUT HOLE FOR TARGET */}
+          <div 
+            className="fixed inset-0 bg-[#09090c]/75 backdrop-blur-md transition-all duration-300 pointer-events-auto"
+            style={{
+              clipPath: clipPathString
+            }}
+          />
 
-          {/* TARGET ELEMENT SPOTLIGHT HIGHLIGHTER */}
+          {/* TARGET SPOTLIGHT CLEAR WINDOW & GLOW RING */}
           {targetRect && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
               style={{
                 position: "fixed",
-                left: targetRect.left - 6,
-                top: targetRect.top - 6,
-                width: targetRect.width + 12,
-                height: targetRect.height + 12,
+                left: left,
+                top: top,
+                width: right - left,
+                height: bottom - top,
                 borderRadius: 16,
-                boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.45)",
                 border: "2px solid #5227FF",
+                boxShadow: "0 0 25px rgba(82, 39, 255, 0.7), inset 0 0 15px rgba(82, 39, 255, 0.3)",
                 pointerEvents: "none",
-                zIndex: 9998
+                zIndex: 9990
               }}
             />
           )}
@@ -287,27 +323,28 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
           {targetRect && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.7 }}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.6 }}
               style={{
                 position: "fixed",
-                left: targetRect.left + targetRect.width / 2 - 16,
-                top: Math.max(12, targetRect.top - 48),
-                zIndex: 9999,
+                left: targetRect.left + targetRect.width / 2 - 18,
+                top: Math.max(8, targetRect.top - 48),
+                zIndex: 9995,
                 pointerEvents: "none"
               }}
-              className="flex flex-col items-center text-[#5227FF] drop-shadow-[0_4px_12px_rgba(82,39,255,0.8)]"
+              className="flex flex-col items-center text-[#5227FF] drop-shadow-[0_4px_16px_rgba(82,39,255,0.9)]"
             >
-              <div className="p-2 rounded-full bg-[#5227FF] text-white shadow-xl animate-bounce">
+              <div className="p-2 rounded-full bg-[#5227FF] text-white shadow-2xl">
                 <ArrowDown className="w-5 h-5 text-white" />
               </div>
             </motion.div>
           )}
 
-          {/* FLOATING STEP CARD WITH STEPPER CIRCLES & INSTRUCTIONS */}
+          {/* FLOATING TOUR CONTROL CARD */}
           <div className="fixed inset-x-3 bottom-4 sm:bottom-6 z-[9999] flex justify-center pointer-events-auto">
             <motion.div
+              id="tour-floating-card"
               key={stepIndex}
               initial={{ opacity: 0, y: 20, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
