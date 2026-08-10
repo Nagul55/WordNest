@@ -199,40 +199,77 @@ export const fetchWordExample = async (word: string, explicitUserContext?: UserC
   }
 };
 
+const UNSPLASH_CLIENT_KEY = process.env.NEXT_PUBLIC_UNSPLASH_KEY || "i764_jj_2X-tacZ7T-7o6nzqOf7XgAPqO-jTqBrGqVY";
+
 export const searchUnsplash = async (query: string): Promise<Array<{ id: string; url: string; thumb: string; alt_text: string; author: string }>> => {
+  const cleanQuery = query.trim() || "learning";
+
+  // 1. Try Backend Route
   try {
-    const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(query)}&per_page=6`);
+    const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(cleanQuery)}&per_page=12`);
     if (res.ok) {
       const data = await res.json();
       if (data.results && data.results.length > 0) {
         return data.results;
       }
     }
-    throw new Error("Offline or no results");
   } catch (e) {
-    const encoded = encodeURIComponent(query.trim() || "study");
-    return [
-      {
-        id: `demo-${encoded}-1`,
-        url: `https://loremflickr.com/800/500/${encoded}?random=1`,
-        thumb: `https://loremflickr.com/400/250/${encoded}?random=1`,
-        alt_text: `${query} visual`,
-        author: "Visual Studio"
-      },
-      {
-        id: `demo-${encoded}-2`,
-        url: `https://image.pollinations.ai/prompt/photo%20of%20${encoded}?width=800&height=500&nologo=true`,
-        thumb: `https://image.pollinations.ai/prompt/photo%20of%20${encoded}?width=400&height=250&nologo=true`,
-        alt_text: `Photo of ${query}`,
-        author: "AI Studio"
-      },
-      {
-        id: `demo-${encoded}-3`,
-        url: `https://loremflickr.com/800/500/${encoded}?random=2`,
-        thumb: `https://loremflickr.com/400/250/${encoded}?random=2`,
-        alt_text: `${query} illustration`,
-        author: "Visual Studio"
-      }
-    ];
+    // Backend unreachable or offline
   }
+
+  // 2. Direct Unsplash Client API Fetch (for frontend standalone or Vercel deployment)
+  try {
+    if (UNSPLASH_CLIENT_KEY && UNSPLASH_CLIENT_KEY !== "your-access-key-here") {
+      const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(cleanQuery)}&per_page=12&orientation=landscape`, {
+        headers: { Authorization: `Client-ID ${UNSPLASH_CLIENT_KEY}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          return data.results.map((item: any) => ({
+            id: item.id,
+            url: item.urls.regular,
+            thumb: item.urls.thumb,
+            alt_text: item.alt_description || cleanQuery,
+            author: item.user?.name || "Unsplash Community"
+          }));
+        }
+      }
+    }
+  } catch (e) {
+    // Direct Unsplash fetch failed or rate limited
+  }
+
+  // 3. Dynamic Word-Specific Fallback (guaranteed to match the search query)
+  const encoded = encodeURIComponent(cleanQuery);
+  return [
+    {
+      id: `fallback-${encoded}-1`,
+      url: `https://loremflickr.com/800/500/${encoded}?random=1`,
+      thumb: `https://loremflickr.com/400/250/${encoded}?random=1`,
+      alt_text: `${cleanQuery} visual`,
+      author: "Visual Studio"
+    },
+    {
+      id: `fallback-${encoded}-2`,
+      url: `https://image.pollinations.ai/prompt/photo%20of%20${encoded}?width=800&height=500&nologo=true`,
+      thumb: `https://image.pollinations.ai/prompt/photo%20of%20${encoded}?width=400&height=250&nologo=true`,
+      alt_text: `Photo of ${cleanQuery}`,
+      author: "AI Studio"
+    },
+    {
+      id: `fallback-${encoded}-3`,
+      url: `https://loremflickr.com/800/500/${encoded}?random=2`,
+      thumb: `https://loremflickr.com/400/250/${encoded}?random=2`,
+      alt_text: `${cleanQuery} illustration`,
+      author: "Visual Studio"
+    },
+    {
+      id: `fallback-${encoded}-4`,
+      url: `https://image.pollinations.ai/prompt/high%20quality%20picture%20of%20${encoded}?width=800&height=500&nologo=true`,
+      thumb: `https://image.pollinations.ai/prompt/high%20quality%20picture%20of%20${encoded}?width=400&height=250&nologo=true`,
+      alt_text: `Picture of ${cleanQuery}`,
+      author: "AI Studio"
+    }
+  ];
 };

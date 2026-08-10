@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import CustomFolder from "@/components/Folder";
+import { searchUnsplash, fetchWordDefinition } from "@/lib/api";
 
 interface Word {
   id: string;
@@ -294,15 +295,14 @@ export default function DecksSection({
       // 2. Fetch Unsplash images for the new term and force-update the cover image preview
       setIsUnsplashSearching(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(term)}&per_page=12`);
-        const data = await res.json();
-        if (data.status === "success" && data.results && data.results.length > 0) {
-          setUnsplashImages(data.results);
+        const results = await searchUnsplash(term);
+        if (results && results.length > 0) {
+          setUnsplashImages(results);
           
           // Force update the cover preview with the first Unsplash image of the new word
           setWordForm(prev => ({ 
             ...prev, 
-            imageUrl: data.results[0].url,
+            imageUrl: results[0].url,
             imageFile: "" // Clear local uploads when term changes
           }));
         }
@@ -635,10 +635,9 @@ export default function DecksSection({
     if (!query.trim()) return;
     setIsEditUnsplashSearching(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(query)}&per_page=12`);
-      const data = await res.json();
-      if (data.status === "success" && data.results) {
-        setEditUnsplashImages(data.results);
+      const results = await searchUnsplash(query);
+      if (results && results.length > 0) {
+        setEditUnsplashImages(results);
       }
     } catch (err) {
       console.error("Edit Unsplash search error:", err);
@@ -697,10 +696,9 @@ export default function DecksSection({
     if (!query.trim()) return;
     setIsUnsplashSearching(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(query)}&per_page=12`);
-      const data = await res.json();
-      if (data.status === "success" && data.results) {
-        setUnsplashImages(data.results);
+      const results = await searchUnsplash(query);
+      if (results && results.length > 0) {
+        setUnsplashImages(results);
       }
     } catch (err) {
       console.error("Unsplash search error:", err);
@@ -722,14 +720,13 @@ export default function DecksSection({
     // 2. Trigger auto Unsplash image prefetch
     setIsUnsplashSearching(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(term)}&per_page=12`);
-      const data = await res.json();
-      if (data.status === "success" && data.results && data.results.length > 0) {
-        setUnsplashImages(data.results);
+      const results = await searchUnsplash(term);
+      if (results && results.length > 0) {
+        setUnsplashImages(results);
         
-        // Auto-select the first regular regular image returned if no cover selected yet
+        // Auto-select the first regular image returned if no cover selected yet
         if (!wordForm.imageUrl && !wordForm.imageFile) {
-          setWordForm(prev => ({ ...prev, imageUrl: data.results[0].url }));
+          setWordForm(prev => ({ ...prev, imageUrl: results[0].url }));
         }
       }
     } catch (err) {
@@ -768,12 +765,11 @@ export default function DecksSection({
 
       setIsEditUnsplashSearching(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(term)}&per_page=12`);
-        const data = await res.json();
-        if (data.status === "success" && data.results && data.results.length > 0) {
-          setEditUnsplashImages(data.results);
+        const results = await searchUnsplash(term);
+        if (results && results.length > 0) {
+          setEditUnsplashImages(results);
           // Auto-select the first matching image for the new word
-          setEditWordForm(prev => ({ ...prev, imageUrl: data.results[0].url, imageFile: "" }));
+          setEditWordForm(prev => ({ ...prev, imageUrl: results[0].url, imageFile: "" }));
         }
       } catch (err) {
         console.error("Auto Unsplash search error:", err);
@@ -818,11 +814,10 @@ export default function DecksSection({
 
     setIsEditUnsplashSearching(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/unsplash/search?q=${encodeURIComponent(term)}&per_page=12`);
-      const data = await res.json();
-      if (data.status === "success" && data.results && data.results.length > 0) {
-        setEditUnsplashImages(data.results);
-        setEditWordForm(prev => ({ ...prev, imageUrl: data.results[0].url, imageFile: "" }));
+      const results = await searchUnsplash(term);
+      if (results && results.length > 0) {
+        setEditUnsplashImages(results);
+        setEditWordForm(prev => ({ ...prev, imageUrl: results[0].url, imageFile: "" }));
       }
     } catch (err) {
       console.error("Auto Unsplash search error:", err);
