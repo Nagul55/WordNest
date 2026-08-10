@@ -219,6 +219,7 @@ export default function OnboardingFlow({ user, initialProfile, onComplete }: Onb
           referral_source: finalReferral,
           onboarding_completed: true
         }));
+        sessionStorage.setItem(`wordnest_show_tour_${user.id}`, "true");
       } catch (e) {
         console.warn("Failed to set local profile cache:", e);
       }

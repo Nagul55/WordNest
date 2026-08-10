@@ -24,6 +24,7 @@ import SettingsSection from "./dashboard/SettingsSection";
 import DecksSection from "./dashboard/DecksSection";
 import PracticeSection from "./dashboard/PracticeSection";
 import StaggeredMenu from "./StaggeredMenu";
+import AppTour from "./AppTour";
 import { supabase } from "@/lib/supabase";
 
 interface DashboardProps {
@@ -165,7 +166,26 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   const [practiceSubTab, setPracticeSubTab] = useState<"vocabulary" | "ailabs" | "flashcards">("vocabulary");
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // Check if user just completed onboarding flow to trigger Guided App Tour
+  useEffect(() => {
+    if (user?.id && typeof window !== "undefined") {
+      const tourFlag = sessionStorage.getItem(`wordnest_show_tour_${user.id}`);
+      if (tourFlag === "true") {
+        setShowTour(true);
+        sessionStorage.removeItem(`wordnest_show_tour_${user.id}`);
+      }
+    }
+
+    const handleStartTourEvent = () => {
+      setShowTour(true);
+    };
+
+    window.addEventListener("wordnest-start-tour", handleStartTourEvent);
+    return () => window.removeEventListener("wordnest-start-tour", handleStartTourEvent);
+  }, [user?.id]);
 
   // Global Staggered Prefetching States
   const [prefetchedDecks, setPrefetchedDecks] = useState<any[] | null>(null);
@@ -659,6 +679,14 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Guided App Tour Modal & Floating Tour overlay */}
+      <AppTour
+        isOpen={showTour}
+        onClose={() => setShowTour(false)}
+        onNavigateTab={(tab) => handleTabChange(tab)}
+        userName={displayUserName}
+      />
     </div>
   );
 }
