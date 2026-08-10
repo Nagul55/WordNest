@@ -7,7 +7,7 @@
 
 ---
 
-### **A state-of-the-art Quizlet alternative powered by Groq AI (Llama 3.1) and Unsplash HD Visuals for intelligent, high-speed vocabulary mastery and interactive Socratic tutoring.**
+### **A state-of-the-art AI-powered study platform driven by Groq AI (Llama 3.1) and Unsplash HD Visuals for intelligent, high-speed vocabulary mastery and interactive Socratic tutoring.**
 
 [![Live Demo](https://img.shields.io/badge/Launch_WordNest_Web_App-433075?style=for-the-badge&logo=vercel&logoColor=white)](https://word-nest-seven.vercel.app)
 

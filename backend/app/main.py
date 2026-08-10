@@ -5,7 +5,7 @@ from app.routers import ai, unsplash, auth
 
 app = FastAPI(
     title="WordNest Backend API",
-    description="Next-Generation AI Study Suite & Quizlet Replica Backend Powered by Groq Cloud and FastAPI",
+    description="Next-Generation AI Study Suite Backend Powered by Groq Cloud and FastAPI",
     version="1.0.0"
 )
 

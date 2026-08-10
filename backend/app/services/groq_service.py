@@ -76,7 +76,7 @@ async def generate_magic_notes(raw_content: str, user_context: Optional[Dict[str
     """
     persona_prompt = build_user_persona_prompt(user_context)
 
-    system_prompt = f"""You are an expert curriculum architect and AI tutor for WordNest (a state-of-the-art Quizlet replica).
+    system_prompt = f"""You are an expert curriculum architect and AI tutor for WordNest (a state-of-the-art intelligent AI study platform).
 {persona_prompt}
 Your goal is to transform whatever study material or notes the user provides into a structured learning deck tailored to their background.
 You MUST respond strictly with valid JSON matching this exact schema:
