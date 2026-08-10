@@ -210,11 +210,15 @@ export const searchUnsplash = async (query: string): Promise<Array<{ id: string;
     if (res.ok) {
       const data = await res.json();
       if (data.results && data.results.length > 0) {
+        // If the backend returns the old static fallback, reject it to trigger the new dynamic fallback
+        if (data.results[0].id === "demo-1" || data.results[0].id === "demo-u1") {
+          throw new Error("Backend returned static fallback");
+        }
         return data.results;
       }
     }
   } catch (e) {
-    // Backend unreachable or offline
+    // Backend unreachable or offline, or returned static fallback
   }
 
   // 2. Direct Unsplash Client API Fetch (for frontend standalone or Vercel deployment)
