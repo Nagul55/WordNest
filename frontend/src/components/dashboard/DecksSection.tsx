@@ -889,6 +889,7 @@ export default function DecksSection({
                 </p>
               </div>
               <button
+                id="tour-create-deck-btn"
                 onClick={() => setIsNewDeckOpen(true)}
                 className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs transition-all duration-300 shadow-md shadow-[#433075]/20 cursor-pointer active:scale-95 border border-[#A58CF4]/20"
               >

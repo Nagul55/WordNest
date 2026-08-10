@@ -1,20 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
 import { 
-  Layers, 
-  Target, 
-  TrendingUp, 
-  Settings as SettingsIcon, 
   X, 
   ChevronRight, 
   ChevronLeft, 
   Check, 
-  BookOpen, 
-  Brain, 
-  Zap 
+  MousePointer, 
+  Sparkles,
+  ArrowUp,
+  ArrowRight,
+  ArrowDown,
+  ArrowLeft
 } from "lucide-react";
 
 export type NavSection = "home" | "decks" | "practice" | "progress" | "settings";
@@ -26,134 +26,159 @@ interface AppTourProps {
   userName?: string;
 }
 
-interface TourStep {
-  id: number;
-  tab: NavSection;
+interface StepTargetConfig {
+  stepIndex: number;
+  targetId: string;
   title: string;
-  description: string;
-  details: {
-    icon: any;
-    label: string;
-    text: string;
-  }[];
+  instruction: string;
+  tooltipPosition?: "left" | "right" | "top" | "bottom";
+  fallbackTab?: NavSection;
 }
 
-const TOUR_STEPS: TourStep[] = [
+const INTERACTIVE_STEPS: StepTargetConfig[] = [
   {
-    id: 1,
-    tab: "decks",
-    title: "Create and Organize Decks",
-    description: "Your personalized study hub where you build custom flashcard decks, organize topics, and generate AI flashcards instantly.",
-    details: [
-      {
-        icon: Layers,
-        label: "Custom Decks",
-        text: "Create and organize flashcards by subject or category."
-      },
-      {
-        icon: Zap,
-        label: "AI Generation",
-        text: "Generate complete study decks automatically from any topic."
-      }
-    ]
+    stepIndex: 1,
+    targetId: "tour-menu-toggle-btn",
+    title: "1. Open Main Menu",
+    instruction: "Click the menu button in the top-right corner to open navigation.",
+    tooltipPosition: "bottom"
   },
   {
-    id: 2,
-    tab: "practice",
-    title: "Master Practice Modules",
-    description: "Train your memory using 3 specialized interactive learning tools:",
-    details: [
-      {
-        icon: BookOpen,
-        label: "Vocabulary Vault",
-        text: "Search terms with audio pronunciations, definitions, and examples."
-      },
-      {
-        icon: Layers,
-        label: "Flashcards Arena",
-        text: "Study with 3D card flips using Spaced Repetition (SM-2 algorithm)."
-      },
-      {
-        icon: Brain,
-        label: "AI Labs & Quiz Arena",
-        text: "Test knowledge with AI-generated quizzes and instant feedback."
-      }
-    ]
+    stepIndex: 2,
+    targetId: "tour-menu-item-decks",
+    title: "2. Select Decks",
+    instruction: "Click 'Decks' in the menu to open your study library.",
+    tooltipPosition: "left"
   },
   {
-    id: 3,
-    tab: "progress",
-    title: "Track Analytics & Daily Streaks",
-    description: "Monitor your learning velocity, daily study streak, accuracy rate, and overall vocabulary progress over time.",
-    details: [
-      {
-        icon: TrendingUp,
-        label: "Streak Tracking",
-        text: "Maintain your active study streak and track daily study duration."
-      },
-      {
-        icon: Target,
-        label: "Mastery Metrics",
-        text: "Review cards mastered, quiz accuracy, and AI interaction totals."
-      }
-    ]
+    stepIndex: 3,
+    targetId: "tour-create-deck-btn",
+    title: "3. Create First Deck",
+    instruction: "Click the 'Create New Deck' button to start building your first study folder.",
+    tooltipPosition: "bottom",
+    fallbackTab: "decks"
   },
   {
-    id: 4,
-    tab: "settings",
-    title: "Customize Profile & Settings",
-    description: "Personalize your workspace, update display details, set daily study targets, and configure sound and security options.",
-    details: [
-      {
-        icon: SettingsIcon,
-        label: "Account Preferences",
-        text: "Manage display name, occupation, themes, and study goals."
-      }
-    ]
+    stepIndex: 4,
+    targetId: "tour-deck-name-input",
+    title: "4. Name Your Deck",
+    instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'.",
+    tooltipPosition: "top"
+  },
+  {
+    stepIndex: 5,
+    targetId: "tour-add-word-btn",
+    title: "5. Add Your First Word",
+    instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
+    tooltipPosition: "top"
   }
 ];
 
 export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: AppTourProps) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [showPrompt, setShowPrompt] = useState(true);
+  const [stepIndex, setStepIndex] = useState(1);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  // Update target element coordinates dynamically
+  const updateTargetCoordinates = useCallback(() => {
+    if (showPrompt || isCompleted) return;
+    const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
+    if (!stepConfig) return;
+
+    const el = document.getElementById(stepConfig.targetId);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      setTargetRect(rect);
+    } else {
+      // Fallback tab navigation if target isn't visible yet
+      if (stepConfig.fallbackTab) {
+        onNavigateTab(stepConfig.fallbackTab);
+      }
+      setTargetRect(null);
+    }
+  }, [stepIndex, showPrompt, isCompleted, onNavigateTab]);
+
+  useEffect(() => {
+    updateTargetCoordinates();
+    const interval = setInterval(updateTargetCoordinates, 300);
+    window.addEventListener("resize", updateTargetCoordinates);
+    window.addEventListener("scroll", updateTargetCoordinates, true);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("resize", updateTargetCoordinates);
+      window.removeEventListener("scroll", updateTargetCoordinates, true);
+    };
+  }, [updateTargetCoordinates]);
+
+  // Click listeners to auto-advance interactive steps
+  useEffect(() => {
+    if (!isOpen || showPrompt || isCompleted) return;
+
+    const handleDocumentClick = (e: MouseEvent) => {
+      const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
+      if (!stepConfig) return;
+
+      const targetEl = document.getElementById(stepConfig.targetId);
+      if (targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl)) {
+        // Auto-advance step after small delay for action execution
+        setTimeout(() => {
+          if (stepIndex < INTERACTIVE_STEPS.length) {
+            setStepIndex(prev => prev + 1);
+          } else {
+            // Tour finished!
+            setIsCompleted(true);
+            try {
+              confetti({
+                particleCount: 150,
+                spread: 80,
+                origin: { y: 0.3 }
+              });
+            } catch (err) {
+              console.warn("Confetti bypass:", err);
+            }
+          }
+        }, 350);
+      }
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
+  }, [isOpen, showPrompt, stepIndex, isCompleted]);
 
   if (!isOpen) return null;
 
-  const currentStep = TOUR_STEPS[currentStepIndex];
-  const totalSteps = TOUR_STEPS.length;
-  const isLastStep = currentStepIndex === totalSteps - 1;
+  const currentStepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
+  const totalSteps = INTERACTIVE_STEPS.length;
 
   const handleStartTour = () => {
     setShowPrompt(false);
-    setCurrentStepIndex(0);
-    onNavigateTab(TOUR_STEPS[0].tab);
+    setStepIndex(1);
+    setIsCompleted(false);
   };
 
   const handleSkipTour = () => {
     onClose();
   };
 
-  const handleNext = () => {
-    if (currentStepIndex < totalSteps - 1) {
-      const nextIndex = currentStepIndex + 1;
-      setCurrentStepIndex(nextIndex);
-      onNavigateTab(TOUR_STEPS[nextIndex].tab);
+  const handleNextStep = () => {
+    if (stepIndex < totalSteps) {
+      setStepIndex(prev => prev + 1);
     } else {
-      onClose();
+      setIsCompleted(true);
     }
   };
 
-  const handlePrev = () => {
-    if (currentStepIndex > 0) {
-      const prevIndex = currentStepIndex - 1;
-      setCurrentStepIndex(prevIndex);
-      onNavigateTab(TOUR_STEPS[prevIndex].tab);
+  const handlePrevStep = () => {
+    if (stepIndex > 1) {
+      setStepIndex(prev => prev - 1);
     }
   };
 
   return (
     <AnimatePresence>
-      {/* 1. STARTING TOUR PROMPT MODAL (Small, compact, matching Stepper style) */}
+      {/* 1. STARTING TOUR PROMPT MODAL (Small, compact, matching Stepper style with WordNest logo SVG) */}
       {showPrompt ? (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 xs:p-4 bg-[#09090c]/80 backdrop-blur-sm select-none">
           <motion.div
@@ -184,7 +209,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
             {/* Subtitle */}
             <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed mb-5 sm:mb-6">
-              Your profile is all set up. Would you like a quick step-by-step tour of WordNest to explore all features, or skip for now?
+              Your profile is all set up. Would you like a step-by-step interactive tour to create your first deck and word, or skip for now?
             </p>
 
             {/* Action buttons */}
@@ -208,142 +233,183 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
             </div>
           </motion.div>
         </div>
-      ) : (
-        /* 2. STEP BY STEP TOUR CARD WITH STEPPER INDICATORS */
-        <div className="fixed inset-0 z-[999] pointer-events-none select-none flex items-center justify-center p-3 xs:p-4">
-          {/* Backdrop layer */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] pointer-events-auto" />
-
-          {/* Stepper Card Container (Exact styling as Onboarding Stepper, Mobile Responsive) */}
+      ) : isCompleted ? (
+        /* 3. COMPLETION MODAL */
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#09090c]/85 backdrop-blur-sm select-none">
           <motion.div
-            key={currentStep.id}
-            initial={{ opacity: 0, y: 15, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.9, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15, scale: 0.96 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#0b0b0e] border border-[#1e1e24] rounded-2xl sm:rounded-[2rem] p-4 xs:p-5 sm:p-6 shadow-2xl text-white relative z-10 pointer-events-auto max-h-[90vh] overflow-y-auto"
+            exit={{ opacity: 0, scale: 0.9, y: 15 }}
+            className="w-full max-w-sm bg-[#0b0b0e] border border-[#1e1e24] rounded-[2rem] p-6 text-center text-white shadow-2xl space-y-4"
           >
-            {/* TOP STEP INDICATOR ROW (Circles & Connector Lines) */}
-            <div className="flex items-center w-full mb-4 sm:mb-6 px-0.5">
-              {TOUR_STEPS.map((step, index) => {
-                const stepNum = index + 1;
-                const isComplete = currentStepIndex > index;
-                const isActive = currentStepIndex === index;
-                const isNotLast = index < totalSteps - 1;
-
-                return (
-                  <React.Fragment key={step.id}>
-                    {/* Circle Indicator */}
-                    <div className="relative flex items-center justify-center shrink-0">
-                      <div
-                        className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-300 font-semibold text-[11px] sm:text-xs ${
-                          isComplete
-                            ? "bg-[#5227FF] text-white"
-                            : isActive
-                            ? "bg-[#5227FF] text-white"
-                            : "bg-[#1f1f24] text-[#a3a3a3]"
-                        }`}
-                      >
-                        {isComplete ? (
-                          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                        ) : isActive ? (
-                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white" />
-                        ) : (
-                          <span>{stepNum}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Connecting Line */}
-                    {isNotLast && (
-                      <div className="flex-1 h-[2px] mx-1 sm:mx-2 bg-[#27272a] relative overflow-hidden rounded">
-                        <div
-                          className="h-full bg-[#5227FF] transition-all duration-400"
-                          style={{
-                            width: isComplete ? "100%" : "0%"
-                          }}
-                        />
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-
-              {/* End Tour X Button */}
-              <button
-                type="button"
-                onClick={onClose}
-                className="ml-2 sm:ml-3 text-[#a3a3a3] hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-[#1f1f24] shrink-0"
-                title="End Tour"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="w-12 h-12 rounded-full bg-[#5227FF]/20 border border-[#5227FF] text-[#5227FF] flex items-center justify-center mx-auto">
+              <Check className="w-6 h-6 text-white" />
             </div>
+            <h3 className="text-xl font-bold text-[#5227FF]">Tour Complete!</h3>
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Congratulations! You have completed the guided tour and learned how to navigate WordNest, create study decks, and add vocabulary words.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 rounded-full bg-[#5227FF] hover:bg-[#5227FF]/90 text-white text-xs font-semibold tracking-wide shadow-md cursor-pointer transition-all active:scale-95"
+            >
+              Start Learning
+            </button>
+          </motion.div>
+        </div>
+      ) : (
+        /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
+        <div className="fixed inset-0 z-[999] pointer-events-none select-none">
+          {/* Subtle dimming layer */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none" />
 
-            {/* STEP CONTENT */}
-            <div className="text-left mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-bold text-[#5227FF] mb-1.5 sm:mb-2 tracking-tight">
-                {currentStep.title}
-              </h2>
-              <p className="text-zinc-200 text-xs sm:text-sm mb-3 sm:mb-4 leading-relaxed">
-                {currentStep.description}
-              </p>
+          {/* TARGET ELEMENT SPOTLIGHT HIGHLIGHTER */}
+          {targetRect && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{
+                position: "fixed",
+                left: targetRect.left - 6,
+                top: targetRect.top - 6,
+                width: targetRect.width + 12,
+                height: targetRect.height + 12,
+                borderRadius: 16,
+                boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.45)",
+                border: "2px solid #5227FF",
+                pointerEvents: "none",
+                zIndex: 9998
+              }}
+            />
+          )}
 
-              {/* Detail Items */}
-              <div className="space-y-2 sm:space-y-2.5">
-                {currentStep.details.map((d, i) => {
-                  const DIcon = d.icon;
+          {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
+          {targetRect && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.7 }}
+              style={{
+                position: "fixed",
+                left: targetRect.left + targetRect.width / 2 - 16,
+                top: Math.max(12, targetRect.top - 48),
+                zIndex: 9999,
+                pointerEvents: "none"
+              }}
+              className="flex flex-col items-center text-[#5227FF] drop-shadow-[0_4px_12px_rgba(82,39,255,0.8)]"
+            >
+              <div className="p-2 rounded-full bg-[#5227FF] text-white shadow-xl animate-bounce">
+                <ArrowDown className="w-5 h-5 text-white" />
+              </div>
+            </motion.div>
+          )}
+
+          {/* FLOATING STEP CARD WITH STEPPER CIRCLES & INSTRUCTIONS */}
+          <div className="fixed inset-x-3 bottom-4 sm:bottom-6 z-[9999] flex justify-center pointer-events-auto">
+            <motion.div
+              key={stepIndex}
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#0b0b0e] border border-[#1e1e24] rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 shadow-2xl text-white relative"
+            >
+              {/* TOP STEPPER CIRCLE INDICATORS */}
+              <div className="flex items-center w-full mb-3 sm:mb-4 px-0.5">
+                {INTERACTIVE_STEPS.map((s, idx) => {
+                  const sNum = idx + 1;
+                  const isDone = stepIndex > sNum;
+                  const isCurrent = stepIndex === sNum;
+                  const isNotLast = idx < totalSteps - 1;
+
                   return (
-                    <div
-                      key={i}
-                      className="p-2.5 sm:p-3 rounded-xl bg-[#0e0e13] border border-[#27272a] flex items-start gap-2.5 sm:gap-3"
-                    >
-                      <div className="p-1.5 rounded-lg bg-[#5227FF]/15 text-[#5227FF] shrink-0 mt-0.5">
-                        <DIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#5227FF]" />
+                    <React.Fragment key={s.stepIndex}>
+                      <div className="relative flex items-center justify-center shrink-0">
+                        <div
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 font-semibold text-[11px] sm:text-xs ${
+                            isDone
+                              ? "bg-[#5227FF] text-white"
+                              : isCurrent
+                              ? "bg-[#5227FF] text-white"
+                              : "bg-[#1f1f24] text-[#a3a3a3]"
+                          }`}
+                        >
+                          {isDone ? (
+                            <Check className="w-3.5 h-3.5 text-white" />
+                          ) : isCurrent ? (
+                            <div className="w-2 h-2 rounded-full bg-white animate-ping" />
+                          ) : (
+                            <span>{sNum}</span>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xs sm:text-sm font-semibold text-white">{d.label}</h4>
-                        <p className="text-[11px] sm:text-xs text-zinc-400 leading-snug">{d.text}</p>
-                      </div>
-                    </div>
+
+                      {isNotLast && (
+                        <div className="flex-1 h-[2px] mx-1 sm:mx-2 bg-[#27272a] relative overflow-hidden rounded">
+                          <div
+                            className="h-full bg-[#5227FF] transition-all duration-300"
+                            style={{ width: isDone ? "100%" : "0%" }}
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
                   );
                 })}
-              </div>
-            </div>
 
-            {/* FOOTER NAV CONTROLS */}
-            <div className="flex items-center justify-between pt-2 border-t border-[#1e1e24]">
-              {/* Back Button / End Tour Link */}
-              {currentStepIndex > 0 ? (
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  className="text-xs text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-1.5 px-2 flex items-center gap-1"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>Previous</span>
-                </button>
-              ) : (
+                {/* END TOUR X BUTTON */}
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-xs text-[#a3a3a3] hover:text-rose-400 transition-colors cursor-pointer font-medium py-1.5 px-2"
+                  className="ml-2 text-[#a3a3a3] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#1f1f24] cursor-pointer"
+                  title="End Tour"
                 >
-                  End Tour
+                  <X className="w-4 h-4" />
                 </button>
-              )}
+              </div>
 
-              {/* Next / Complete Button */}
-              <button
-                type="button"
-                onClick={handleNext}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#5227FF] hover:bg-[#5227FF]/90 text-white text-xs font-semibold tracking-wide transition-all shadow-md cursor-pointer flex items-center gap-1.5 active:scale-95"
-              >
-                <span>{isLastStep ? "Complete" : "Next"}</span>
-                {!isLastStep && <ChevronRight className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </motion.div>
+              {/* INSTRUCTION TEXT */}
+              <div className="text-left mb-4">
+                <h4 className="text-sm sm:text-base font-bold text-[#5227FF] mb-1">
+                  {currentStepConfig?.title}
+                </h4>
+                <p className="text-zinc-200 text-xs sm:text-sm leading-relaxed">
+                  {currentStepConfig?.instruction}
+                </p>
+              </div>
+
+              {/* FOOTER NAV CONTROLS */}
+              <div className="flex items-center justify-between pt-2 border-t border-[#1e1e24]">
+                {stepIndex > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="text-xs text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-1 px-2 flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Previous</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="text-xs text-[#a3a3a3] hover:text-rose-400 transition-colors cursor-pointer font-medium py-1 px-2"
+                  >
+                    End Tour
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#5227FF] hover:bg-[#5227FF]/90 text-white text-xs font-semibold tracking-wide transition-all shadow-md cursor-pointer flex items-center gap-1 active:scale-95"
+                >
+                  <span>Skip Step</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>

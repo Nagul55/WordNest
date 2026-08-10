@@ -411,6 +411,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 
       <div className="staggered-menu-header" aria-label="Main navigation toggle area">
         <button
+          id="tour-menu-toggle-btn"
           ref={toggleBtnRef}
           className="sm-toggle"
           aria-label={open ? 'Close menu' : 'Open menu'}
@@ -449,8 +450,9 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
               items.map((it, idx) => {
                 const isActive = activeItemId === it.id;
                 return (
-                  <li className="sm-panel-itemWrap" key={it.id + idx}>
+                  <li className="sm-panel-itemWrap" key={it.id || idx}>
                     <button 
+                      id={`tour-menu-item-${it.id}`}
                       type="button"
                       className={`sm-panel-item text-left ${isActive ? 'active-item' : ''}`}
                       onClick={() => handleItemClick(it.id)}
