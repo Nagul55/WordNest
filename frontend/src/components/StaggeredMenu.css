@@ -114,6 +114,9 @@
   padding: 6rem 2.25rem 2.25rem 2.25rem;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
   z-index: 65 !important;
   pointer-events: auto;
   opacity: 0;

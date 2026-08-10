@@ -429,7 +429,7 @@ export default function PracticeSection({
   ];
 
   return (
-    <div className="space-y-8 pb-12 animate-fadeIn w-full max-w-full overflow-x-hidden text-[#0D0D0D]">
+    <div className="space-y-6 sm:space-y-8 pb-12 animate-fadeIn w-full max-w-full overflow-x-hidden scrollbar-hide no-scrollbar text-[#0D0D0D]">
       <AnimatePresence mode="wait">
         {activeTab === null ? (
           // ==========================================

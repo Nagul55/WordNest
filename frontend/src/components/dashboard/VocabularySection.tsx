@@ -185,7 +185,7 @@ export default function VocabularySection() {
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-fadeIn text-[#0D0D0D] w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 sm:space-y-8 pb-12 animate-fadeIn text-[#0D0D0D] w-full max-w-full overflow-x-hidden scrollbar-hide no-scrollbar">
       
       {/* HEADER BAR (DEEP PURPLE TO SLATE GRADIENT) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-[#433075] via-[#272A3B] to-[#0D0D0D] text-[#FAFAFA] border-2 border-[#A58CF4] shadow-xl">

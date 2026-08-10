@@ -724,7 +724,7 @@ export default function SettingsSection({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 pb-12 w-full max-w-full overflow-x-hidden text-[#0D0D0D] relative min-h-[600px] animate-fadeIn">
+    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 pb-12 w-full max-w-full overflow-x-hidden scrollbar-hide no-scrollbar text-[#0D0D0D] relative min-h-[600px] animate-fadeIn">
       
       {/* MOBILE SCROLLABLE TAB STRIP (AUTOMATIC CENTER ALIGNMENT) */}
       <div className="lg:hidden w-full max-w-full flex items-center gap-2 pb-2 px-0">

@@ -1236,7 +1236,7 @@ export default function DecksSection({
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
-              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-white/95 backdrop-blur-xl border border-white/60 p-4 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl space-y-4 sm:space-y-6 text-left"
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide no-scrollbar custom-scrollbar bg-white/95 backdrop-blur-xl border border-white/60 p-4 sm:p-8 rounded-[24px] sm:rounded-[32px] shadow-2xl space-y-4 sm:space-y-6 text-left"
             >
               <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#C8CED6]/40">
                 <h3 className="text-xl sm:text-2xl font-black text-[#433075] tracking-tight">Add Word to Folder</h3>

@@ -549,7 +549,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
         <main 
           ref={mainRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto overflow-x-hidden pt-20 sm:pt-24 pb-8 px-4 xs:px-6 sm:px-8 lg:px-10 relative z-10 bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6]">
+          className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide no-scrollbar pt-20 sm:pt-24 pb-8 px-3 xs:px-6 sm:px-8 lg:px-10 relative z-10 bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6]">
           <div className="w-full">
             <AnimatePresence mode="wait">
               <motion.div
