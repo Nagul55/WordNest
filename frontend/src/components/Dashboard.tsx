@@ -515,7 +515,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                   <span className="text-xs sm:text-base font-bold text-[#4f46e5] block mb-1.5 sm:mb-3 uppercase tracking-wider">Socials</span>
                   <div className="flex items-center gap-4 sm:gap-6 text-xs xs:text-sm sm:text-lg font-bold group/socials">
                     <a
-                      href="https://github.com/Nagul55"
+                      href="https://github.com/Nagul55/WordNest"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#0D0D0D] group-hover/socials:opacity-40 hover:!opacity-100 hover:text-[#4f46e5] hover:-translate-y-0.5 transition-all duration-300 inline-block"
