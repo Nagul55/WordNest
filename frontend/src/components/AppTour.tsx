@@ -100,49 +100,40 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
-  // STRICT CLICK LOCKOUT: Restrict user from clicking anything on the page EXCEPT active step target & tour card controls!
+  // STRICT CLICK LOCKOUT & TARGET ACTION EXECUTION
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
 
-    const handleGlobalInteraction = (e: MouseEvent | TouchEvent) => {
+    const handlePointerInteraction = (e: MouseEvent | TouchEvent) => {
       const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
       if (!stepConfig) return;
 
       const targetEl = document.getElementById(stepConfig.targetId);
       const cardEl = document.getElementById("tour-floating-card");
 
-      const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
-      const isCardClick = cardEl && (cardEl.contains(e.target as Node) || e.target === cardEl);
+      const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as MouseEvent).clientY;
 
-      // Block click if it is NOT on the active target or tour card
-      if (!isTargetClick && !isCardClick) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+      let isInsideTarget = false;
+      if (targetEl) {
+        const rect = targetEl.getBoundingClientRect();
+        if (
+          clientX >= rect.left - 12 &&
+          clientX <= rect.right + 12 &&
+          clientY >= rect.top - 12 &&
+          clientY <= rect.bottom + 12
+        ) {
+          isInsideTarget = true;
+        }
       }
-    };
 
-    document.addEventListener("click", handleGlobalInteraction, true);
-    document.addEventListener("mousedown", handleGlobalInteraction, true);
-    document.addEventListener("touchstart", handleGlobalInteraction, true);
+      const isInsideCard = cardEl && cardEl.contains(e.target as Node);
 
-    return () => {
-      document.removeEventListener("click", handleGlobalInteraction, true);
-      document.removeEventListener("mousedown", handleGlobalInteraction, true);
-      document.removeEventListener("touchstart", handleGlobalInteraction, true);
-    };
-  }, [isOpen, showPrompt, stepIndex, isCompleted]);
-
-  // Auto-advance step when user performs the action on the target element
-  useEffect(() => {
-    if (!isOpen || showPrompt || isCompleted) return;
-
-    const handleTargetActionClick = (e: MouseEvent) => {
-      const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
-      if (!stepConfig) return;
-
-      const targetEl = document.getElementById(stepConfig.targetId);
-      if (targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl)) {
+      // If user clicks on/near active target, trigger action and advance step
+      if (isInsideTarget) {
+        if (targetEl) {
+          targetEl.click();
+        }
         setTimeout(() => {
           if (stepIndex < INTERACTIVE_STEPS.length) {
             setStepIndex(prev => prev + 1);
@@ -158,12 +149,26 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               console.warn("Confetti bypass:", err);
             }
           }
-        }, 350);
+        }, 300);
+        return;
+      }
+
+      // If user clicks outside active target & outside tour card, block the click!
+      if (!isInsideCard) {
+        e.preventDefault();
+        e.stopPropagation();
       }
     };
 
-    document.addEventListener("click", handleTargetActionClick, true);
-    return () => document.removeEventListener("click", handleTargetActionClick, true);
+    window.addEventListener("click", handlePointerInteraction, true);
+    window.addEventListener("mousedown", handlePointerInteraction, true);
+    window.addEventListener("touchstart", handlePointerInteraction, true);
+
+    return () => {
+      window.removeEventListener("click", handlePointerInteraction, true);
+      window.removeEventListener("mousedown", handlePointerInteraction, true);
+      window.removeEventListener("touchstart", handlePointerInteraction, true);
+    };
   }, [isOpen, showPrompt, stepIndex, isCompleted]);
 
   if (!isOpen) return null;
@@ -194,17 +199,6 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       setStepIndex(prev => prev - 1);
     }
   };
-
-  // Prepare Clip Path Polygon for Blur Backdrop Cutout Spotlight
-  const pad = 8;
-  const left = targetRect ? Math.max(0, targetRect.left - pad) : 0;
-  const top = targetRect ? Math.max(0, targetRect.top - pad) : 0;
-  const right = targetRect ? targetRect.right + pad : 0;
-  const bottom = targetRect ? targetRect.bottom + pad : 0;
-
-  const clipPathString = targetRect
-    ? `polygon(0% 0%, 0% 100%, ${left}px 100%, ${left}px ${top}px, ${right}px ${top}px, ${right}px ${bottom}px, ${left}px ${bottom}px, ${left}px 100%, 100% 100%, 100% 0%)`
-    : undefined;
 
   return (
     <AnimatePresence>
@@ -289,33 +283,28 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           </motion.div>
         </div>
       ) : (
-        /* 2. REAL-TIME SPOTLIGHT BLUR CUTOUT & STRICT CLICK LOCKOUT OVERLAY */
-        <div className="fixed inset-0 z-[9985] select-none">
+        /* 2. REAL-TIME SMOOTH BACKDROP BLUR OVERLAY WITH SOFT GLOWING SPOTLIGHT HALO */
+        <div className="fixed inset-0 z-[9985] select-none pointer-events-none">
           
-          {/* HEAVY BACKDROP BLUR MASK WITH CUTOUT HOLE FOR TARGET */}
-          <div 
-            className="fixed inset-0 bg-[#09090c]/75 backdrop-blur-md transition-all duration-300 pointer-events-auto"
-            style={{
-              clipPath: clipPathString
-            }}
-          />
+          {/* SMOOTH BACKDROP BLUR LAYER */}
+          <div className="fixed inset-0 bg-[#09090c]/50 backdrop-blur-[3px] transition-all duration-300 pointer-events-none" />
 
-          {/* TARGET SPOTLIGHT CLEAR WINDOW & GLOW RING */}
+          {/* SOFT ROUNDED SPOTLIGHT GLOW HALO AROUND TARGET BUTTON */}
           {targetRect && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               style={{
                 position: "fixed",
-                left: left,
-                top: top,
-                width: right - left,
-                height: bottom - top,
-                borderRadius: 16,
+                left: targetRect.left - 8,
+                top: targetRect.top - 8,
+                width: targetRect.width + 16,
+                height: targetRect.height + 16,
+                borderRadius: 24,
                 border: "2px solid #5227FF",
-                boxShadow: "0 0 25px rgba(82, 39, 255, 0.7), inset 0 0 15px rgba(82, 39, 255, 0.3)",
+                boxShadow: "0 0 35px 8px rgba(82, 39, 255, 0.65), inset 0 0 15px rgba(82, 39, 255, 0.35)",
                 pointerEvents: "none",
-                zIndex: 9990
+                zIndex: 9992
               }}
             />
           )}
