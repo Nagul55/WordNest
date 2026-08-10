@@ -1,4 +1,4 @@
-# <img src="frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest <img src="https://api.iconify.design/lucide/zap.svg?color=%23FBBF24" width="28" height="28" align="center" />
+# <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest <img src="https://api.iconify.design/lucide/zap.svg?color=%23FBBF24" width="28" height="28" align="center" />
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge&logo=github-actions)](https://github.com/Nagul55/WordNest)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
@@ -294,7 +294,7 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 **Nagul G**  
 Full-Stack Developer & AI Systems Architect
 
-- <img src="frontend/public/Wordnest.svg" alt="WordNest Logo" width="18" height="18" align="center" /> **Live Application**: [WordNest Web App](https://word-nest-seven.vercel.app)
+- <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/frontend/public/Wordnest.svg" alt="WordNest Logo" width="18" height="18" align="center" /> **Live Application**: [WordNest Web App](https://word-nest-seven.vercel.app)
 - <img src="https://api.iconify.design/simple-icons/github.svg?color=%239CA3AF" alt="GitHub Logo" width="18" height="18" align="center" /> **GitHub**: [@Nagul55](https://github.com/Nagul55)
 - <img src="https://api.iconify.design/simple-icons/linkedin.svg?color=%230A66C2" alt="LinkedIn Logo" width="18" height="18" align="center" /> **LinkedIn**: [nagul-g](https://www.linkedin.com/in/nagul-g)
 - <img src="https://api.iconify.design/simple-icons/x.svg?color=%231DA1F2" alt="Twitter/X Logo" width="18" height="18" align="center" /> **Twitter**: [@Nagul_55](https://x.com/Nagul_55)
