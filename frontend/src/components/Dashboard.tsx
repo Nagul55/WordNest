@@ -511,9 +511,9 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
               activeItemId={activeTab}
               onSelectItem={(id) => handleTabChange(id as NavSection)}
               bottomContent={
-                <div className="pt-6 border-t border-[#C8CED6]/40 text-left righteous-regular select-none w-full">
-                  <span className="text-sm sm:text-base font-bold text-[#4f46e5] block mb-3 uppercase tracking-wider">Socials</span>
-                  <div className="flex items-center gap-6 text-base sm:text-lg font-bold group/socials">
+                <div className="pt-3 sm:pt-6 border-t border-[#C8CED6]/40 text-left righteous-regular select-none w-full">
+                  <span className="text-xs sm:text-base font-bold text-[#4f46e5] block mb-1.5 sm:mb-3 uppercase tracking-wider">Socials</span>
+                  <div className="flex items-center gap-4 sm:gap-6 text-xs xs:text-sm sm:text-lg font-bold group/socials">
                     <a
                       href="https://github.com/Nagul55"
                       target="_blank"
