@@ -165,6 +165,11 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         return;
       }
 
+      // Special case: for Step 4 (Name Your Deck), clicking the input allows the click but doesn't auto-advance.
+      if (stepIndex === 4 && isTargetClick && !isSubmitClick) {
+        return;
+      }
+
       if (isTargetClick || isSubmitClick) {
         // Auto-advance step after small delay for action execution
         setTimeout(() => {
@@ -343,6 +348,8 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
                 ? 'inset-x-3 sm:inset-x-auto sm:right-6 bottom-4 sm:bottom-6 justify-center sm:justify-end'
                 : currentStepConfig?.tooltipPosition === 'left'
                 ? 'inset-x-3 sm:inset-x-auto sm:left-6 bottom-4 sm:bottom-6 justify-center sm:justify-start'
+                : currentStepConfig?.tooltipPosition === 'top'
+                ? 'inset-x-3 top-4 sm:top-6 justify-center'
                 : 'inset-x-3 bottom-4 sm:bottom-6 justify-center'
             }`}
           >
