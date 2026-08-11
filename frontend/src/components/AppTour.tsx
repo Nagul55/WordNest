@@ -55,7 +55,7 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     targetId: "tour-create-deck-btn",
     title: "3. Create First Deck",
     instruction: "Click the 'Create New Deck' button to start building your first study folder.",
-    tooltipPosition: "bottom",
+    tooltipPosition: "right",
     fallbackTab: "decks"
   },
   {
@@ -337,7 +337,15 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           })()}
 
           {/* FLOATING STEP CARD WITH STEPPER CIRCLES & INSTRUCTIONS */}
-          <div className="fixed inset-x-3 bottom-4 sm:bottom-6 z-[9999] flex justify-center pointer-events-auto">
+          <div 
+            className={`fixed z-[9999] pointer-events-auto flex ${
+              currentStepConfig?.tooltipPosition === 'right'
+                ? 'inset-x-3 sm:inset-x-auto sm:right-6 bottom-4 sm:bottom-6 justify-center sm:justify-end'
+                : currentStepConfig?.tooltipPosition === 'left'
+                ? 'inset-x-3 sm:inset-x-auto sm:left-6 bottom-4 sm:bottom-6 justify-center sm:justify-start'
+                : 'inset-x-3 bottom-4 sm:bottom-6 justify-center'
+            }`}
+          >
             <motion.div
               id="tour-overlay-card"
               key={stepIndex}
