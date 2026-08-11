@@ -466,7 +466,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                       onClick={() => handleItemClick(it.id)}
                       aria-label={it.ariaLabel || it.label} 
                     >
-                      <span className="sm-panel-itemLabel">
+                      <span id={`tour-menu-item-${it.id}-label`} className="sm-panel-itemLabel">
                         {it.label.toUpperCase()}
                         {displayItemNumbering && (
                           <sup className="sm-panel-itemIndex">

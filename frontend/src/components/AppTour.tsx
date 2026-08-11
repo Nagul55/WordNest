@@ -107,7 +107,8 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
     if (!stepConfig) return;
 
-    const el = document.getElementById(stepConfig.targetId);
+    const targetId = stepConfig.targetId;
+    const el = document.getElementById(`${targetId}-label`) || document.getElementById(targetId);
     if (el) {
       const rect = el.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
@@ -142,6 +143,12 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     if (!isOpen || showPrompt || isCompleted) return;
 
     const handleDocumentClick = (e: MouseEvent) => {
+      // Allow clicks in the tour overlay itself
+      const tourOverlay = document.getElementById("tour-overlay-card");
+      if (tourOverlay && (tourOverlay.contains(e.target as Node) || e.target === tourOverlay)) {
+        return;
+      }
+
       const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
       if (!stepConfig) return;
 
@@ -150,6 +157,13 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       
       const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
       const isSubmitClick = submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl);
+
+      if (!isTargetClick && !isSubmitClick) {
+        // Block clicks outside target
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
 
       if (isTargetClick || isSubmitClick) {
         // Auto-advance step after small delay for action execution
@@ -325,6 +339,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           {/* FLOATING STEP CARD WITH STEPPER CIRCLES & INSTRUCTIONS */}
           <div className="fixed inset-x-3 bottom-4 sm:bottom-6 z-[9999] flex justify-center pointer-events-auto">
             <motion.div
+              id="tour-overlay-card"
               key={stepIndex}
               initial={{ opacity: 0, y: 20, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
