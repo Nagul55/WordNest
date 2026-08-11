@@ -362,6 +362,14 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   }, [playClose, animateIcon, animateColor, animateText, onMenuClose]);
 
   useEffect(() => {
+    const handleForceClose = () => {
+      closeMenu();
+    };
+    window.addEventListener('wordnest-close-menu', handleForceClose);
+    return () => window.removeEventListener('wordnest-close-menu', handleForceClose);
+  }, [closeMenu]);
+
+  useEffect(() => {
     if (!closeOnClickAway || !open) return;
 
     const handleClickOutside = (event: MouseEvent) => {

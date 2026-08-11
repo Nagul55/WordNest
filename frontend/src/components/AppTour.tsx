@@ -9,7 +9,12 @@ import {
   ChevronRight, 
   ChevronLeft, 
   Check, 
-  ArrowDown
+  MousePointer, 
+  Sparkles,
+  ArrowUp,
+  ArrowRight,
+  ArrowDown,
+  ArrowLeft
 } from "lucide-react";
 
 export type NavSection = "home" | "decks" | "practice" | "progress" | "settings";
@@ -26,6 +31,7 @@ interface StepTargetConfig {
   targetId: string;
   title: string;
   instruction: string;
+  tooltipPosition?: "left" | "right" | "top" | "bottom";
   fallbackTab?: NavSection;
 }
 
@@ -34,32 +40,37 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     stepIndex: 1,
     targetId: "tour-menu-toggle-btn",
     title: "1. Open Main Menu",
-    instruction: "Click the menu button in the top-right corner to open navigation."
+    instruction: "Click the menu button in the top-right corner to open navigation.",
+    tooltipPosition: "bottom"
   },
   {
     stepIndex: 2,
     targetId: "tour-menu-item-decks",
     title: "2. Select Decks",
-    instruction: "Click 'Decks' in the menu to open your study library."
+    instruction: "Click 'Decks' in the menu to open your study library.",
+    tooltipPosition: "left"
   },
   {
     stepIndex: 3,
     targetId: "tour-create-deck-btn",
     title: "3. Create First Deck",
     instruction: "Click the 'Create New Deck' button to start building your first study folder.",
+    tooltipPosition: "bottom",
     fallbackTab: "decks"
   },
   {
     stepIndex: 4,
     targetId: "tour-deck-name-input",
     title: "4. Name Your Deck",
-    instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'."
+    instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'.",
+    tooltipPosition: "top"
   },
   {
     stepIndex: 5,
     targetId: "tour-add-word-btn",
     title: "5. Add Your First Word",
-    instruction: "Click 'Add Word' to save your first vocabulary term in this deck."
+    instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
+    tooltipPosition: "top"
   }
 ];
 
@@ -69,7 +80,28 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
 
-  // Compute exact coordinates of targeted element
+  // Immediately clear rect & trigger tab navigation on step change
+  useEffect(() => {
+    if (!isOpen || showPrompt || isCompleted) return;
+    setTargetRect(null);
+
+    // Close side menu when moving past step 2
+    if (stepIndex > 2 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("wordnest-close-menu"));
+    }
+
+    const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
+    if (stepConfig?.fallbackTab) {
+      onNavigateTab(stepConfig.fallbackTab);
+      if (stepConfig.fallbackTab === "decks" && stepIndex === 3) {
+        if (typeof window !== "undefined" && window.location.hash.startsWith("#deck-")) {
+          window.location.hash = "";
+        }
+      }
+    }
+  }, [stepIndex, isOpen, showPrompt, isCompleted, onNavigateTab]);
+
+  // Update target element coordinates dynamically
   const updateTargetCoordinates = useCallback(() => {
     if (showPrompt || isCompleted) return;
     const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
@@ -78,8 +110,13 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     const el = document.getElementById(stepConfig.targetId);
     if (el) {
       const rect = el.getBoundingClientRect();
-      setTargetRect(rect);
+      if (rect.width > 0 && rect.height > 0) {
+        setTargetRect(rect);
+      } else {
+        setTargetRect(null);
+      }
     } else {
+      // Fallback tab navigation if target isn't visible yet
       if (stepConfig.fallbackTab) {
         onNavigateTab(stepConfig.fallbackTab);
       }
@@ -89,7 +126,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
   useEffect(() => {
     updateTargetCoordinates();
-    const interval = setInterval(updateTargetCoordinates, 250);
+    const interval = setInterval(updateTargetCoordinates, 200);
     window.addEventListener("resize", updateTargetCoordinates);
     window.addEventListener("scroll", updateTargetCoordinates, true);
 
@@ -100,98 +137,44 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
-  // Elevate active step's target element z-index so it sits above backdrop blur, 100% visible & unblurred!
+  // Click listeners to auto-advance interactive steps
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
 
-    const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
-    if (!stepConfig) return;
-
-    const el = document.getElementById(stepConfig.targetId);
-    if (!el) return;
-
-    const originalZIndex = el.style.zIndex;
-    const originalPosition = el.style.position;
-
-    // Elevate target element
-    el.style.position = "relative";
-    el.style.zIndex = "9995";
-
-    return () => {
-      el.style.zIndex = originalZIndex;
-      el.style.position = originalPosition;
-    };
-  }, [isOpen, showPrompt, isCompleted, stepIndex]);
-
-  // STRICT CLICK LOCKOUT & TARGET ACTION EXECUTION
-  useEffect(() => {
-    if (!isOpen || showPrompt || isCompleted) return;
-
-    const handlePointerInteraction = (e: MouseEvent | TouchEvent) => {
+    const handleDocumentClick = (e: MouseEvent) => {
       const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
       if (!stepConfig) return;
 
       const targetEl = document.getElementById(stepConfig.targetId);
-      const cardEl = document.getElementById("tour-floating-card");
+      const submitEl = stepIndex === 4 ? document.getElementById("tour-create-deck-submit-btn") : null;
+      
+      const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
+      const isSubmitClick = submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl);
 
-      const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as MouseEvent).clientX;
-      const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as MouseEvent).clientY;
-
-      let isInsideTarget = false;
-      if (targetEl) {
-        const rect = targetEl.getBoundingClientRect();
-        if (
-          clientX >= rect.left - 12 &&
-          clientX <= rect.right + 12 &&
-          clientY >= rect.top - 12 &&
-          clientY <= rect.bottom + 12
-        ) {
-          isInsideTarget = true;
-        }
-      }
-
-      const isInsideCard = cardEl && cardEl.contains(e.target as Node);
-
-      // If user clicks on/near active target, trigger action and advance step
-      if (isInsideTarget) {
-        if (targetEl) {
-          targetEl.click();
-        }
+      if (isTargetClick || isSubmitClick) {
+        // Auto-advance step after small delay for action execution
         setTimeout(() => {
           if (stepIndex < INTERACTIVE_STEPS.length) {
             setStepIndex(prev => prev + 1);
           } else {
+            // Tour finished!
             setIsCompleted(true);
             try {
               confetti({
-                particleCount: 160,
-                spread: 90,
+                particleCount: 150,
+                spread: 80,
                 origin: { y: 0.3 }
               });
             } catch (err) {
               console.warn("Confetti bypass:", err);
             }
           }
-        }, 300);
-        return;
-      }
-
-      // If user clicks outside active target & outside tour card, block the click!
-      if (!isInsideCard) {
-        e.preventDefault();
-        e.stopPropagation();
+        }, 350);
       }
     };
 
-    window.addEventListener("click", handlePointerInteraction, true);
-    window.addEventListener("mousedown", handlePointerInteraction, true);
-    window.addEventListener("touchstart", handlePointerInteraction, true);
-
-    return () => {
-      window.removeEventListener("click", handlePointerInteraction, true);
-      window.removeEventListener("mousedown", handlePointerInteraction, true);
-      window.removeEventListener("touchstart", handlePointerInteraction, true);
-    };
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
   }, [isOpen, showPrompt, stepIndex, isCompleted]);
 
   if (!isOpen) return null;
@@ -223,18 +206,11 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     }
   };
 
-  // Dimensions for rounded cutout spotlight
-  const pad = 6;
-  const left = targetRect ? Math.max(0, targetRect.left - pad) : 0;
-  const top = targetRect ? Math.max(0, targetRect.top - pad) : 0;
-  const width = targetRect ? targetRect.width + pad * 2 : 0;
-  const height = targetRect ? targetRect.height + pad * 2 : 0;
-
   return (
     <AnimatePresence>
-      {/* 1. STARTING TOUR PROMPT MODAL */}
+      {/* 1. STARTING TOUR PROMPT MODAL (Small, compact, matching Stepper style with WordNest logo SVG) */}
       {showPrompt ? (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 xs:p-4 bg-[#09090c]/85 backdrop-blur-md select-none">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 xs:p-4 bg-[#09090c]/80 backdrop-blur-sm select-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -289,7 +265,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         </div>
       ) : isCompleted ? (
         /* 3. COMPLETION MODAL */
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[#09090c]/85 backdrop-blur-md select-none">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[#09090c]/85 backdrop-blur-sm select-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -313,84 +289,42 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           </motion.div>
         </div>
       ) : (
-        /* 2. REAL-TIME SMOOTH BACKDROP BLUR MASK WITH SMOOTH ROUNDED CORNER CUTOUT & ELEVATED TARGET */
-        <div className="fixed inset-0 z-[9985] select-none pointer-events-none">
-          
-          {/* SVG MASK BACKDROP WITH ROUNDED RECTANGLE CUTOUT FOR UNBLURRED VISIBILITY */}
-          <svg className="fixed inset-0 w-full h-full z-[9980] pointer-events-none">
-            <defs>
-              <mask id="tour-spotlight-mask">
-                <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                {targetRect && (
-                  <rect
-                    x={left}
-                    y={top}
-                    width={width}
-                    height={height}
-                    rx={20}
-                    ry={20}
-                    fill="black"
-                  />
-                )}
-              </mask>
-            </defs>
+        /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
+        <div className="fixed inset-0 z-[999] pointer-events-none select-none">
 
-            <rect
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              fill="rgba(9, 9, 12, 0.65)"
-              mask="url(#tour-spotlight-mask)"
-              className="backdrop-blur-md"
-            />
-          </svg>
-
-          {/* SOFT ROUNDED SPOTLIGHT GLOW HALO AROUND TARGET BUTTON */}
-          {targetRect && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              style={{
-                position: "fixed",
-                left: left,
-                top: top,
-                width: width,
-                height: height,
-                borderRadius: 20,
-                border: "2px solid #5227FF",
-                boxShadow: "0 0 30px 6px rgba(82, 39, 255, 0.7), inset 0 0 12px rgba(82, 39, 255, 0.3)",
-                pointerEvents: "none",
-                zIndex: 9992
-              }}
-            />
-          )}
 
           {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
-          {targetRect && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.6 }}
-              style={{
-                position: "fixed",
-                left: targetRect.left + targetRect.width / 2 - 18,
-                top: Math.max(8, targetRect.top - 48),
-                zIndex: 9996,
-                pointerEvents: "none"
-              }}
-              className="flex flex-col items-center text-[#5227FF] drop-shadow-[0_4px_16px_rgba(82,39,255,0.9)]"
-            >
-              <div className="p-2 rounded-full bg-[#5227FF] text-white shadow-2xl">
-                <ArrowDown className="w-5 h-5 text-white" />
-              </div>
-            </motion.div>
-          )}
+          {targetRect && (() => {
+            const isNearTop = targetRect.top < 85;
+            const arrowTop = isNearTop ? targetRect.bottom + 12 : Math.max(12, targetRect.top - 48);
+            return (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.7 }}
+                style={{
+                  position: "fixed",
+                  left: targetRect.left + targetRect.width / 2 - 16,
+                  top: arrowTop,
+                  zIndex: 9999,
+                  pointerEvents: "none"
+                }}
+                className="flex flex-col items-center text-[#5227FF] drop-shadow-[0_4px_12px_rgba(82,39,255,0.8)]"
+              >
+                <div className="p-2 rounded-full bg-[#5227FF] text-white shadow-xl animate-bounce">
+                  {isNearTop ? (
+                    <ArrowUp className="w-5 h-5 text-white" />
+                  ) : (
+                    <ArrowDown className="w-5 h-5 text-white" />
+                  )}
+                </div>
+              </motion.div>
+            );
+          })()}
 
-          {/* FLOATING TOUR CONTROL CARD */}
+          {/* FLOATING STEP CARD WITH STEPPER CIRCLES & INSTRUCTIONS */}
           <div className="fixed inset-x-3 bottom-4 sm:bottom-6 z-[9999] flex justify-center pointer-events-auto">
             <motion.div
-              id="tour-floating-card"
               key={stepIndex}
               initial={{ opacity: 0, y: 20, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}

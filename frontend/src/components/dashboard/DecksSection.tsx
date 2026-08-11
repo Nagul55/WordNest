@@ -907,6 +907,7 @@ export default function DecksSection({
                   It looks like you don't have any vocabulary decks yet. Create your first folder to organize your words.
                 </p>
                 <button
+                  id="tour-create-deck-btn"
                   onClick={() => setIsNewDeckOpen(true)}
                   className="px-4 py-2 bg-[#433075] text-white font-black text-xs rounded-xl hover:bg-[#A58CF4] hover:text-[#0D0D0D] transition-all cursor-pointer"
                 >
@@ -1021,6 +1022,7 @@ export default function DecksSection({
               </div>
 
               <button
+                id="tour-add-word-btn"
                 onClick={() => {
                   setWordForm({ word: "", meaning: "", imageType: "url", imageUrl: "", imageFile: "" });
                   setUnsplashImages([]);
@@ -1063,6 +1065,7 @@ export default function DecksSection({
                 </p>
                 {activeDeck?.words.length === 0 && (
                   <button
+                    id="tour-add-word-btn"
                     onClick={() => {
                       setWordForm({ word: "", meaning: "", imageType: "url", imageUrl: "", imageFile: "" });
                       setUnsplashImages([]);
@@ -1178,6 +1181,7 @@ export default function DecksSection({
                 <div className="space-y-1.5 sm:space-y-2">
                   <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Deck Name</label>
                   <input
+                    id="tour-deck-name-input"
                     type="text"
                     required
                     placeholder="e.g. Advanced Academic Vocabulary"
@@ -1208,6 +1212,7 @@ export default function DecksSection({
                     Cancel
                   </button>
                   <button
+                    id="tour-create-deck-submit-btn"
                     type="submit"
                     disabled={isSubmitting}
                     className="w-1/2 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"
