@@ -362,47 +362,8 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#0b0b0e] border border-[#1e1e24] rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 shadow-2xl text-white relative"
             >
-              {/* TOP STEPPER CIRCLE INDICATORS */}
-              <div className="flex items-center w-full mb-3 sm:mb-4 px-0.5">
-                {INTERACTIVE_STEPS.map((s, idx) => {
-                  const sNum = idx + 1;
-                  const isDone = stepIndex > sNum;
-                  const isCurrent = stepIndex === sNum;
-                  const isNotLast = idx < totalSteps - 1;
-
-                  return (
-                    <React.Fragment key={s.stepIndex}>
-                      <div className="relative flex items-center justify-center shrink-0">
-                        <div
-                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 font-semibold text-[11px] sm:text-xs ${
-                            isDone
-                              ? "bg-[#5227FF] text-white"
-                              : isCurrent
-                              ? "bg-[#5227FF] text-white"
-                              : "bg-[#1f1f24] text-[#a3a3a3]"
-                          }`}
-                        >
-                          {isDone ? (
-                            <Check className="w-3.5 h-3.5 text-white" />
-                          ) : isCurrent ? (
-                            <div className="w-2 h-2 rounded-full bg-white animate-ping" />
-                          ) : (
-                            <span>{sNum}</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {isNotLast && (
-                        <div className="flex-1 h-[2px] mx-1 sm:mx-2 bg-[#27272a] relative overflow-hidden rounded">
-                          <div
-                            className="h-full bg-[#5227FF] transition-all duration-300"
-                            style={{ width: isDone ? "100%" : "0%" }}
-                          />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+              {/* TOP CONTROLS */}
+              <div className="flex items-center justify-end w-full mb-3 sm:mb-4 px-0.5">
 
                 {/* END TOUR X BUTTON */}
                 <button
