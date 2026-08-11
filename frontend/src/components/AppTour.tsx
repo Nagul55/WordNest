@@ -63,14 +63,14 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     targetId: "tour-deck-name-input",
     title: "4. Name Your Deck",
     instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'.",
-    tooltipPosition: "top"
+    tooltipPosition: "right"
   },
   {
     stepIndex: 5,
     targetId: "tour-add-word-btn",
     title: "5. Add Your First Word",
     instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
-    tooltipPosition: "top"
+    tooltipPosition: "right"
   }
 ];
 
@@ -341,11 +341,11 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
             );
           })()}
 
-          {/* FLOATING STEP CARD WITH STEPPER CIRCLES & INSTRUCTIONS */}
+          {/* FLOATING STEP CARD WITH INSTRUCTIONS */}
           <div 
             className={`fixed z-[9999] pointer-events-auto flex ${
               currentStepConfig?.tooltipPosition === 'right'
-                ? 'inset-x-3 sm:inset-x-auto sm:right-6 bottom-4 sm:bottom-6 justify-center sm:justify-end'
+                ? 'inset-x-3 sm:inset-x-auto sm:right-6 top-4 sm:top-6 justify-center sm:justify-end'
                 : currentStepConfig?.tooltipPosition === 'left'
                 ? 'inset-x-3 sm:inset-x-auto sm:left-6 bottom-4 sm:bottom-6 justify-center sm:justify-start'
                 : currentStepConfig?.tooltipPosition === 'top'
@@ -356,66 +356,55 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
             <motion.div
               id="tour-overlay-card"
               key={stepIndex}
-              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              initial={{ opacity: 0, y: 15, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.96 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#0b0b0e] border border-[#1e1e24] rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 shadow-2xl text-white relative"
+              exit={{ opacity: 0, y: -15, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full max-w-[calc(100vw-2rem)] sm:max-w-xs bg-[#0b0b0e]/95 backdrop-blur-md border border-[#1e1e24] rounded-xl sm:rounded-2xl p-3.5 sm:p-4 pr-8 sm:pr-9 shadow-2xl text-white relative"
             >
-              {/* TOP CONTROLS */}
-              <div className="flex items-center justify-end w-full mb-3 sm:mb-4 px-0.5">
-
-                {/* END TOUR X BUTTON */}
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="ml-2 text-[#a3a3a3] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#1f1f24] cursor-pointer"
-                  title="End Tour"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              {/* END TOUR X BUTTON */}
+              <button
+                type="button"
+                onClick={onClose}
+                className="absolute top-3 right-3 text-[#a3a3a3] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#1f1f24] cursor-pointer"
+                title="End Tour"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
 
               {/* INSTRUCTION TEXT */}
-              <div className="text-left mb-4">
-                <h4 className="text-sm sm:text-base font-bold text-[#5227FF] mb-1">
+              <div className="text-left mb-2.5">
+                <h4 className="text-xs sm:text-sm font-bold text-[#5227FF] mb-0.5">
                   {currentStepConfig?.title}
                 </h4>
-                <p className="text-zinc-200 text-xs sm:text-sm leading-relaxed">
+                <p className="text-zinc-300 text-[11px] sm:text-xs leading-relaxed">
                   {currentStepConfig?.instruction}
                 </p>
               </div>
 
               {/* FOOTER NAV CONTROLS */}
-              <div className="flex items-center justify-between pt-2 border-t border-[#1e1e24]">
-                {stepIndex > 1 ? (
+              {stepIndex > 1 ? (
+                <div className="flex items-center justify-start pt-2 border-t border-[#1e1e24]/60">
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className="text-xs text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-1 px-2 flex items-center gap-1"
+                    className="text-[11px] sm:text-xs text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-0.5 px-1 flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <ChevronLeft className="w-3 h-3" />
                     <span>Previous</span>
                   </button>
-                ) : (
+                </div>
+              ) : (
+                <div className="flex items-center justify-start pt-2 border-t border-[#1e1e24]/60">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="text-xs text-[#a3a3a3] hover:text-rose-400 transition-colors cursor-pointer font-medium py-1 px-2"
+                    className="text-[11px] sm:text-xs text-[#a3a3a3] hover:text-rose-400 transition-colors cursor-pointer font-medium py-0.5 px-1"
                   >
                     End Tour
                   </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleNextStep}
-                  className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-[#5227FF] hover:bg-[#5227FF]/90 text-white text-xs font-semibold tracking-wide transition-all shadow-md cursor-pointer flex items-center gap-1 active:scale-95"
-                >
-                  <span>Skip Step</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                </div>
+              )}
             </motion.div>
           </div>
         </div>
