@@ -241,7 +241,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
-  // Strict touch & click interception with coordinate bounds checking to lock non-tour application elements
+  // Strict touch & click interception to lock out all non-tour application interactions
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
 
@@ -255,14 +255,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
       if (!stepConfig) return;
 
-      let targetId = stepConfig.targetId;
-      if (stepIndex === 4 && hasTypedDeckName) {
-        targetId = "tour-create-deck-submit-btn";
-      } else if (stepIndex === 6 && wordStepState === "ready") {
-        targetId = "tour-add-word-submit-btn";
-      }
-
-      const targetEl = document.getElementById(`${targetId}-label`) || document.getElementById(targetId);
+      const targetEl = document.getElementById(stepConfig.targetId);
       const submitEl = stepIndex === 4 
         ? document.getElementById("tour-create-deck-submit-btn") 
         : stepIndex === 6 
@@ -271,39 +264,10 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       const wordInputEl = stepIndex === 6 
         ? document.getElementById("tour-word-term-input")
         : null;
-
-      // Extract click/touch client coordinates
-      let clientX = 0;
-      let clientY = 0;
-      if (e instanceof MouseEvent) {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      } else if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      }
-
-      const isTargetNode = Boolean(
-        (targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl)) ||
-        (submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl)) ||
-        (wordInputEl && (wordInputEl.contains(e.target as Node) || e.target === wordInputEl))
-      );
-
-      // Check if interaction position (clientX, clientY) falls inside active target bounding box
-      let isTargetBounds = false;
-      const checkEl = targetEl || submitEl || wordInputEl;
-      if (checkEl) {
-        const rect = checkEl.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          isTargetBounds = 
-            clientX >= rect.left - 12 &&
-            clientX <= rect.right + 12 &&
-            clientY >= rect.top - 12 &&
-            clientY <= rect.bottom + 12;
-        }
-      }
-
-      const isTargetClick = isTargetNode || isTargetBounds;
+      
+      const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
+      const isSubmitClick = submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl);
+      const isWordInputClick = wordInputEl && (wordInputEl.contains(e.target as Node) || e.target === wordInputEl);
 
       if (stepIndex === 9) {
         return;
@@ -311,36 +275,29 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
       // If interaction is NOT on target element, submit button, or word input:
       // STRICTLY BLOCK ALL TOUCHES AND CLICKS!
-      if (!isTargetClick) {
+      if (!isTargetClick && !isSubmitClick && !isWordInputClick) {
         e.stopPropagation();
         e.stopImmediatePropagation();
         e.preventDefault();
         return false;
       }
 
-      // Handle step auto-advancement on actual click or touch
-      if (e.type === "click" || e.type === "touchend") {
-        if ((stepIndex === 4 || (stepIndex === 6 && targetId === "tour-word-term-input")) && !submitEl?.contains(e.target as Node)) {
+      // Handle step auto-advancement on actual click
+      if (e.type === "click") {
+        if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
           return;
         }
 
-        // If clicked via overlay backdrop coordinate match, programmatically trigger click on target element!
-        if (!isTargetNode && checkEl) {
-          try {
-            checkEl.click();
-          } catch (err) {
-            console.warn("Target click trigger bypass:", err);
-          }
+        if (isTargetClick || isSubmitClick) {
+          setTimeout(() => {
+            if (stepIndex < INTERACTIVE_STEPS.length) {
+              setStepIndex(prev => prev + 1);
+            } else {
+              setIsCompleted(true);
+              fireConfettiRain();
+            }
+          }, 350);
         }
-
-        setTimeout(() => {
-          if (stepIndex < INTERACTIVE_STEPS.length) {
-            setStepIndex(prev => prev + 1);
-          } else {
-            setIsCompleted(true);
-            fireConfettiRain();
-          }
-        }, 350);
       }
     };
 
@@ -354,7 +311,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         document.removeEventListener(evt, handleInteraction, { capture: true });
       });
     };
-  }, [isOpen, showPrompt, stepIndex, isCompleted, fireConfettiRain, hasTypedDeckName, wordStepState]);
+  }, [isOpen, showPrompt, stepIndex, isCompleted, fireConfettiRain]);
 
   if (!isOpen) return null;
 
@@ -463,8 +420,54 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           </motion.div>
         </div>
       ) : (
-        /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
-        <div className="fixed inset-0 z-[999] pointer-events-auto select-none bg-black/25 backdrop-blur-[1px]">
+        /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET SPOTLIGHT CUTOUT & ARROW */
+        <div className="fixed inset-0 z-[999] pointer-events-none select-none">
+          {/* SVG CUTOUT SPOTLIGHT MASK OVERLAY */}
+          <svg className="fixed inset-0 w-full h-full z-[998] pointer-events-auto">
+            <defs>
+              <mask id="tour-spotlight-mask">
+                {/* White rectangle covers full screen */}
+                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                {/* Black cutout hole over active targetRect */}
+                {targetRect && stepIndex !== 9 && (
+                  <rect
+                    x={targetRect.left - 6}
+                    y={targetRect.top - 6}
+                    width={targetRect.width + 12}
+                    height={targetRect.height + 12}
+                    rx="12"
+                    fill="black"
+                  />
+                )}
+              </mask>
+            </defs>
+
+            {/* Dark background layer masked with spotlight cutout */}
+            <rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="rgba(0, 0, 0, 0.55)"
+              mask="url(#tour-spotlight-mask)"
+            />
+
+            {/* Glowing spotlight border around the target cutout hole */}
+            {targetRect && stepIndex !== 9 && (
+              <rect
+                x={targetRect.left - 6}
+                y={targetRect.top - 6}
+                width={targetRect.width + 12}
+                height={targetRect.height + 12}
+                rx="12"
+                fill="none"
+                stroke="#5227FF"
+                strokeWidth="2.5"
+                className="animate-pulse"
+                style={{ pointerEvents: "none" }}
+              />
+            )}
+          </svg>
 
 
           {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
