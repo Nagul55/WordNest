@@ -1185,6 +1185,9 @@ export default function DecksSection({
                     id="tour-deck-name-input"
                     type="text"
                     required
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
                     placeholder="e.g. Advanced Academic Vocabulary"
                     value={deckForm.name}
                     onChange={(e) => setDeckForm(prev => ({ ...prev, name: e.target.value }))}
@@ -1263,6 +1266,9 @@ export default function DecksSection({
                     id="tour-word-term-input"
                     type="text"
                     required
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
                     placeholder="e.g. Cacophony"
                     value={wordForm.word}
                     onChange={(e) => setWordForm(prev => ({ ...prev, word: e.target.value }))}

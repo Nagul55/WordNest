@@ -97,8 +97,7 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     title: "8. Start Practice Session",
     instruction: "Click 'Practice' in the menu to start reviewing your flashcards.",
     tooltipPosition: "left",
-    cardPositionClass: "sm:inset-x-auto sm:top-16 sm:right-[400px] sm:justify-end",
-    fallbackTab: "practice"
+    cardPositionClass: "sm:inset-x-auto sm:top-16 sm:right-[400px] sm:justify-end"
   },
   {
     stepIndex: 9,
