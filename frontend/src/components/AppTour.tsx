@@ -50,7 +50,7 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     title: "2. Select Decks",
     instruction: "Click 'Decks' in the menu to open your study library.",
     tooltipPosition: "left",
-    cardPositionClass: "inset-x-3 sm:inset-x-auto top-12 sm:top-16 sm:right-[400px] justify-center sm:justify-end"
+    cardPositionClass: "sm:inset-x-auto sm:top-16 sm:right-[400px] sm:justify-end"
   },
   {
     stepIndex: 3,
@@ -58,7 +58,7 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     title: "3. Create First Deck",
     instruction: "Click the 'Create New Deck' button to start building your first study folder.",
     tooltipPosition: "right",
-    cardPositionClass: "inset-x-3 sm:inset-x-auto top-44 sm:top-[13.5rem] sm:right-8 justify-center sm:justify-end",
+    cardPositionClass: "sm:inset-x-auto sm:top-[13.5rem] sm:right-8 sm:justify-end",
     fallbackTab: "decks"
   },
   {
@@ -67,14 +67,14 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     title: "4. Name Your Deck",
     instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'.",
     tooltipPosition: "right",
-    cardPositionClass: "inset-x-3 sm:inset-x-auto top-1/2 -translate-y-1/2 sm:right-10 justify-center sm:justify-end"
+    cardPositionClass: "sm:inset-x-auto sm:top-1/2 sm:-translate-y-1/2 sm:right-10 sm:justify-end"
   },
   {
     stepIndex: 5,
     targetId: "tour-created-deck-card",
     title: "5. Open Your Deck",
     instruction: "Click on your newly created deck to open it and start adding words.",
-    cardPositionClass: "inset-x-3 sm:inset-x-auto top-48 sm:top-[14.5rem] sm:left-[25rem] justify-center sm:justify-start"
+    cardPositionClass: "sm:inset-x-auto sm:top-[14.5rem] sm:left-[25rem] sm:justify-start"
   },
   {
     stepIndex: 6,
@@ -82,7 +82,7 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     title: "6. Add Your First Word",
     instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
     tooltipPosition: "right",
-    cardPositionClass: "inset-x-3 sm:inset-x-auto top-48 sm:top-[15.5rem] sm:right-10 justify-center sm:justify-end"
+    cardPositionClass: "sm:inset-x-auto sm:top-[15.5rem] sm:right-10 sm:justify-end"
   },
   {
     stepIndex: 7,
@@ -97,7 +97,7 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     title: "8. Start Practice Session",
     instruction: "Click 'Practice' in the menu to start reviewing your flashcards.",
     tooltipPosition: "left",
-    cardPositionClass: "inset-x-3 sm:inset-x-auto top-12 sm:top-16 sm:right-[400px] justify-center sm:justify-end",
+    cardPositionClass: "sm:inset-x-auto sm:top-16 sm:right-[400px] sm:justify-end",
     fallbackTab: "practice"
   },
   {
