@@ -31,6 +31,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0D0D0D",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -39,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark h-screen overflow-hidden">
+    <html lang="en" className="dark min-h-[100dvh] w-full overflow-x-hidden">
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -51,8 +55,8 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300..800&family=Righteous&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="h-screen max-h-screen bg-[#0D0D0D] text-[#FAFAFA] antialiased flex flex-col overflow-hidden selection:bg-[#A58CF4] selection:text-[#0D0D0D]">
-        <main className="flex-1 flex flex-col h-full w-full overflow-hidden">
+      <body className="min-h-[100dvh] w-full bg-[#0D0D0D] text-[#FAFAFA] antialiased flex flex-col overflow-x-hidden selection:bg-[#A58CF4] selection:text-[#0D0D0D]">
+        <main className="flex-1 flex flex-col min-h-[100dvh] w-full overflow-x-hidden">
           {children}
         </main>
       </body>
