@@ -373,11 +373,6 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
     if (!closeOnClickAway || !open) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      // Lock menu open when guided app tour is active
-      if (typeof document !== "undefined" && document.getElementById("tour-overlay-card")) {
-        return;
-      }
-
       if (
         panelRef.current &&
         !panelRef.current.contains(event.target as Node) &&
@@ -409,14 +404,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       {/* Backdrop when menu is open */}
       {open && (
         <div 
-          onClick={(e) => {
-            if (typeof document !== "undefined" && document.getElementById("tour-overlay-card")) {
-              e.stopPropagation();
-              e.preventDefault();
-              return;
-            }
-            closeMenu();
-          }}
+          onClick={closeMenu}
           className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[52] transition-opacity duration-300"
           aria-hidden="true"
         />
