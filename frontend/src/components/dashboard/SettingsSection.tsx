@@ -919,25 +919,6 @@ export default function SettingsSection({
               </p>
             </div>
 
-            {/* Guided App Tour Banner */}
-            <div className="rounded-[2rem] bg-gradient-to-r from-[#433075] via-[#272A3B] to-[#0D0D0D] border border-[#5227FF]/50 p-5 sm:p-6 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-[#5227FF]/30 border border-[#A58CF4]/40 text-[#A58CF4] shrink-0">
-                  <Compass className="w-6 h-6 text-[#A58CF4]" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-white">Need a Refresher?</h3>
-                  <p className="text-xs text-zinc-300">Take the interactive WordNest guided tour to explore all modules.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent("wordnest-start-tour"))}
-                className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-[#5227FF] to-[#70389B] hover:from-[#70389B] hover:to-[#5227FF] text-white font-black text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 cursor-pointer border border-[#A58CF4]/40 shrink-0"
-              >
-                Start App Tour
-              </button>
-            </div>
 
             {/* Profile Avatar configuration Card */}
             <div className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 p-6 sm:p-8 space-y-6 relative z-10">
