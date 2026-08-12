@@ -241,12 +241,12 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
-  // Click listeners to auto-advance interactive steps
+  // Strict touch & click interception to lock out all non-tour application interactions
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
 
-    const handleDocumentClick = (e: MouseEvent) => {
-      // Allow clicks in the tour overlay itself
+    const handleInteraction = (e: Event) => {
+      // Allow clicks/touches inside the tour card overlay itself
       const tourOverlay = document.getElementById("tour-overlay-card");
       if (tourOverlay && (tourOverlay.contains(e.target as Node) || e.target === tourOverlay)) {
         return;
@@ -261,47 +261,56 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         : stepIndex === 6 
         ? document.getElementById("tour-add-word-submit-btn") 
         : null;
+      const wordInputEl = stepIndex === 6 
+        ? document.getElementById("tour-word-term-input")
+        : null;
       
       const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
       const isSubmitClick = submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl);
-      const isWordInputClick = stepIndex === 6 && (
-        Boolean(document.getElementById("tour-word-term-input")?.contains(e.target as Node)) || e.target === document.getElementById("tour-word-term-input")
-      );
+      const isWordInputClick = wordInputEl && (wordInputEl.contains(e.target as Node) || e.target === wordInputEl);
 
       if (stepIndex === 9) {
         return;
       }
 
+      // If interaction is NOT on target element, submit button, or word input:
+      // STRICTLY BLOCK ALL TOUCHES AND CLICKS!
       if (!isTargetClick && !isSubmitClick && !isWordInputClick) {
-        // Block clicks outside target
         e.stopPropagation();
+        e.stopImmediatePropagation();
         e.preventDefault();
-        return;
+        return false;
       }
 
-      // Special cases:
-      // 1. For Step 4, clicking input allows typing without auto-advancing.
-      // 2. For Step 6, clicking opening button or input field allows modal open/typing without completing tour.
-      if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
-        return;
-      }
+      // Handle step auto-advancement on actual click
+      if (e.type === "click") {
+        if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
+          return;
+        }
 
-      if (isTargetClick || isSubmitClick) {
-        // Auto-advance step after small delay for action execution
-        setTimeout(() => {
-          if (stepIndex < INTERACTIVE_STEPS.length) {
-            setStepIndex(prev => prev + 1);
-          } else {
-            // Tour finished!
-            setIsCompleted(true);
-            fireConfettiRain();
-          }
-        }, 350);
+        if (isTargetClick || isSubmitClick) {
+          setTimeout(() => {
+            if (stepIndex < INTERACTIVE_STEPS.length) {
+              setStepIndex(prev => prev + 1);
+            } else {
+              setIsCompleted(true);
+              fireConfettiRain();
+            }
+          }, 350);
+        }
       }
     };
 
-    document.addEventListener("click", handleDocumentClick, true);
-    return () => document.removeEventListener("click", handleDocumentClick, true);
+    const interactionEvents = ["click", "touchstart", "touchend", "pointerdown", "mousedown"];
+    interactionEvents.forEach(evt => {
+      document.addEventListener(evt, handleInteraction, { capture: true });
+    });
+
+    return () => {
+      interactionEvents.forEach(evt => {
+        document.removeEventListener(evt, handleInteraction, { capture: true });
+      });
+    };
   }, [isOpen, showPrompt, stepIndex, isCompleted, fireConfettiRain]);
 
   if (!isOpen) return null;
@@ -412,7 +421,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         </div>
       ) : (
         /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
-        <div className="fixed inset-0 z-[999] pointer-events-none select-none">
+        <div className="fixed inset-0 z-[999] pointer-events-auto select-none bg-black/25 backdrop-blur-[1px]">
 
 
           {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
