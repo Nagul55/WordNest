@@ -71,8 +71,15 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
   },
   {
     stepIndex: 5,
+    targetId: "tour-created-deck-card",
+    title: "5. Open Your Deck",
+    instruction: "Click on your newly created deck to open it and start adding words.",
+    cardPositionClass: "inset-x-3 sm:inset-x-auto top-48 sm:top-[14.5rem] sm:left-[25rem] justify-center sm:justify-start"
+  },
+  {
+    stepIndex: 6,
     targetId: "tour-add-word-btn",
-    title: "5. Add Your First Word",
+    title: "6. Add Your First Word",
     instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
     tooltipPosition: "right"
   }

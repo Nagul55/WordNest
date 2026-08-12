@@ -916,9 +916,10 @@ export default function DecksSection({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {decks.map(deck => (
+                 {decks.map((deck, index) => (
                   <div
                     key={deck.id}
+                    id={index === 0 ? "tour-created-deck-card" : undefined}
                     onClick={() => handleCardClick(deck.id)}
                     className="group relative flex flex-col justify-between p-6 rounded-3xl bg-white border border-[#C8CED6]/40 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden border-b-4 border-b-[#433075]"
                   >
