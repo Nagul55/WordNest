@@ -119,23 +119,27 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
   const fireConfettiRain = useCallback(() => {
     try {
-      // Fire gentle confetti rain across full width of the screen (x: 0.05 to 0.95) from top edge (y: 0) down to bottom
-      const xPositions = [0.05, 0.22, 0.4, 0.6, 0.78, 0.95];
-      xPositions.forEach((x, i) => {
-        setTimeout(() => {
-          confetti({
-            particleCount: 10,
-            spread: 60,
-            origin: { x, y: 0 },
-            startVelocity: 18,
-            gravity: 0.65,
-            ticks: 400,
-            colors: ["#5227FF", "#A58CF4", "#38ef7d", "#11998e", "#ff416c", "#ffd700"]
-          });
-        }, i * 40);
-      });
-    } catch (err) {
-      console.warn("Confetti bypass:", err);
+      const count = 220;
+      const defaults = {
+        origin: { y: 0.15 },
+        colors: ["#5227FF", "#A58CF4", "#FFD700", "#FF5757", "#00E5FF", "#FF007F", "#00FF66"]
+      };
+
+      const fire = (particleRatio: number, opts: confetti.Options) => {
+        confetti({
+          ...defaults,
+          ...opts,
+          particleCount: Math.floor(count * particleRatio)
+        });
+      };
+
+      fire(0.25, { spread: 35, startVelocity: 65 });
+      fire(0.2, { spread: 75, startVelocity: 55 });
+      fire(0.35, { spread: 110, decay: 0.91, scalar: 0.9 });
+      fire(0.1, { spread: 130, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+      fire(0.1, { spread: 130, startVelocity: 45 });
+    } catch (e) {
+      console.warn("Party confetti animation bypass:", e);
     }
   }, []);
 
