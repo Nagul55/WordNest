@@ -66,7 +66,8 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     targetId: "tour-deck-name-input",
     title: "4. Name Your Deck",
     instruction: "Type a title for your deck (e.g. My First Deck) and click 'Create Deck'.",
-    tooltipPosition: "right"
+    tooltipPosition: "right",
+    cardPositionClass: "inset-x-3 sm:inset-x-auto top-52 sm:top-[18rem] sm:right-8 justify-center sm:justify-end"
   },
   {
     stepIndex: 5,
