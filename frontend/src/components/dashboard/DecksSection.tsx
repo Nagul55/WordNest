@@ -1260,6 +1260,7 @@ export default function DecksSection({
                 <div className="space-y-1.5 sm:space-y-2">
                   <label className="text-[11px] sm:text-[13px] font-black text-[#433075] uppercase tracking-wider pl-1">Vocabulary Term</label>
                   <input
+                    id="tour-word-term-input"
                     type="text"
                     required
                     placeholder="e.g. Cacophony"
@@ -1582,6 +1583,7 @@ export default function DecksSection({
                     Cancel
                   </button>
                   <button
+                    id="tour-add-word-submit-btn"
                     type="submit"
                     disabled={isSubmitting}
                     className="w-1/2 py-3 sm:py-3.5 rounded-2xl bg-[#433075] hover:bg-[#A58CF4] text-white hover:text-[#0D0D0D] font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer shadow-lg shadow-[#433075]/15 flex items-center justify-center gap-2 active:scale-95"

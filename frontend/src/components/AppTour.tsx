@@ -91,12 +91,14 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [hasTypedDeckName, setHasTypedDeckName] = useState(false);
+  const [wordStepState, setWordStepState] = useState<"initial" | "input" | "generating" | "ready">("initial");
 
   // Immediately clear rect & trigger tab navigation on step change
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
     setTargetRect(null);
     setHasTypedDeckName(false);
+    setWordStepState("initial");
 
     // Close side menu when moving past step 2
     if (stepIndex > 2 && typeof window !== "undefined") {
@@ -128,6 +130,27 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       setHasTypedDeckName(isTyped);
       if (isTyped) {
         targetId = "tour-create-deck-submit-btn";
+      }
+    } else if (stepIndex === 6) {
+      const termInput = document.getElementById("tour-word-term-input") as HTMLInputElement | null;
+      if (termInput) {
+        const hasTerm = termInput.value.trim().length > 0;
+        const meaningTextarea = document.querySelector('textarea[placeholder*="definition"]') as HTMLTextAreaElement | null;
+        const hasMeaning = Boolean(meaningTextarea && meaningTextarea.value.trim().length > 0);
+
+        if (hasTerm && hasMeaning) {
+          targetId = "tour-add-word-submit-btn";
+          setWordStepState("ready");
+        } else if (hasTerm) {
+          targetId = "tour-word-term-input";
+          setWordStepState("generating");
+        } else {
+          targetId = "tour-word-term-input";
+          setWordStepState("input");
+        }
+      } else {
+        setWordStepState("initial");
+        targetId = "tour-add-word-btn";
       }
     }
 
@@ -176,20 +199,27 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       if (!stepConfig) return;
 
       const targetEl = document.getElementById(stepConfig.targetId);
-      const submitEl = stepIndex === 4 ? document.getElementById("tour-create-deck-submit-btn") : null;
+      const submitEl = stepIndex === 4 
+        ? document.getElementById("tour-create-deck-submit-btn") 
+        : stepIndex === 6 
+        ? document.getElementById("tour-add-word-submit-btn") 
+        : null;
       
       const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
       const isSubmitClick = submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl);
+      const isWordInputClick = stepIndex === 6 && (
+        Boolean(document.getElementById("tour-word-term-input")?.contains(e.target as Node)) || e.target === document.getElementById("tour-word-term-input")
+      );
 
-      if (!isTargetClick && !isSubmitClick) {
+      if (!isTargetClick && !isSubmitClick && !isWordInputClick) {
         // Block clicks outside target
         e.stopPropagation();
         e.preventDefault();
         return;
       }
 
-      // Special case: for Step 4 (Name Your Deck), clicking the input allows the click but doesn't auto-advance.
-      if (stepIndex === 4 && isTargetClick && !isSubmitClick) {
+      // Special case: clicking input fields allows typing but doesn't auto-advance.
+      if ((stepIndex === 4 || (stepIndex === 6 && isWordInputClick)) && !isSubmitClick) {
         return;
       }
 
@@ -367,7 +397,9 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           {/* FLOATING STEP CARD WITH INSTRUCTIONS */}
           <div 
             className={`fixed z-[9999] pointer-events-auto flex ${
-              currentStepConfig?.cardPositionClass
+              stepIndex === 6 && wordStepState !== "initial"
+                ? "inset-x-3 sm:inset-x-auto top-1/2 -translate-y-1/2 sm:right-10 justify-center sm:justify-end"
+                : currentStepConfig?.cardPositionClass
                 ? currentStepConfig.cardPositionClass
                 : currentStepConfig?.tooltipPosition === 'right'
                 ? 'inset-x-3 sm:inset-x-auto sm:right-6 top-4 sm:top-6 justify-center sm:justify-end'
@@ -405,6 +437,12 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
                 <p className="text-zinc-300 text-[11px] sm:text-xs leading-relaxed">
                   {stepIndex === 4 && hasTypedDeckName
                     ? "Great! Now click the 'Create Deck' button to create your folder."
+                    : stepIndex === 6 && wordStepState === "input"
+                    ? "Type a vocabulary term (e.g. Ephemeral) to trigger AI generation."
+                    : stepIndex === 6 && wordStepState === "generating"
+                    ? "AI is fetching the definition and cover image... Please wait a moment."
+                    : stepIndex === 6 && wordStepState === "ready"
+                    ? "Great! AI fetched the details. Now click 'Add Word' to save it to your deck."
                     : currentStepConfig?.instruction}
                 </p>
               </div>
