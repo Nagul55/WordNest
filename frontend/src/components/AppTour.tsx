@@ -58,6 +58,7 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     title: "3. Create First Deck",
     instruction: "Click the 'Create New Deck' button to start building your first study folder.",
     tooltipPosition: "right",
+    cardPositionClass: "inset-x-3 sm:inset-x-auto top-44 sm:top-[13.5rem] sm:right-8 justify-center sm:justify-end",
     fallbackTab: "decks"
   },
   {
