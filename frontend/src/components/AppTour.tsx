@@ -459,10 +459,10 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               stepIndex === 9
                 ? "inset-0 items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
                 : stepIndex === 6 && wordStepState !== "initial"
-                ? "inset-x-3 bottom-4 sm:bottom-auto sm:inset-x-auto sm:top-1/2 sm:-translate-y-1/2 sm:right-10 justify-center sm:justify-end"
+                ? "inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-auto sm:inset-x-auto sm:top-1/2 sm:-translate-y-1/2 sm:right-10 justify-center sm:justify-end"
                 : currentStepConfig?.cardPositionClass
-                ? `inset-x-3 bottom-4 sm:bottom-auto ${currentStepConfig.cardPositionClass}`
-                : "inset-x-3 bottom-4 sm:bottom-6 justify-center"
+                ? `inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-auto ${currentStepConfig.cardPositionClass}`
+                : "inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 justify-center"
             }`}
           >
             <motion.div
@@ -472,7 +472,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.96 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className={`w-full relative shadow-2xl text-white max-h-[85dvh] overflow-y-auto ${
+              className={`w-full relative shadow-2xl text-white ${
                 stepIndex === 9
                   ? "max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#0b0b0e] border border-[#1e1e24] rounded-2xl sm:rounded-3xl p-6 sm:p-7 pr-7 sm:pr-8"
                   : "max-w-[calc(100vw-2rem)] sm:max-w-xs bg-[#0b0b0e]/95 backdrop-blur-md border border-[#1e1e24] rounded-xl sm:rounded-2xl p-3.5 sm:p-4 pr-8 sm:pr-9"

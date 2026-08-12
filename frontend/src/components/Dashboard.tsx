@@ -331,12 +331,12 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   ];
 
   return (
-    <div className="flex min-h-[100dvh] h-full w-full bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6] text-[#0D0D0D] overflow-x-hidden relative">
+    <div className="flex h-full min-h-dvh h-dvh w-full max-w-full bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6] text-[#0D0D0D] overflow-x-hidden relative min-w-0">
       
       {/* ==========================================
           MAIN AREA (FLOATING HEADER + SCROLLABLE CONTENT)
           ========================================== */}
-      <div className="flex-1 flex flex-col min-h-[100dvh] h-full w-full min-w-0 bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6] overflow-x-hidden relative">
+      <div className="flex-1 flex flex-col h-full min-h-dvh w-full max-w-full min-w-0 bg-gradient-to-br from-[#F7F7F7] via-[#DFE3E8] to-[#C8CED6] overflow-x-hidden relative">
         
         {/* Floating header with dynamic background on scroll */}
         <header className={`absolute top-0 left-0 right-0 px-4 xs:px-6 sm:px-8 lg:px-10 z-30 transition-all duration-300 flex items-center justify-between ${
