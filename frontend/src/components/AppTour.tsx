@@ -120,29 +120,16 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
   const fireConfettiRain = useCallback(() => {
     try {
-      // Top rain burst (falling from top to bottom across full screen)
+      // Gentle, subtle confetti shower starting from the very top of the screen (y: 0) drifting to bottom
       confetti({
-        particleCount: 180,
-        spread: 120,
-        origin: { y: 0.05 },
-        startVelocity: 45,
-        gravity: 0.9,
-        ticks: 350,
-        colors: ["#5227FF", "#A58CF4", "#38ef7d", "#11998e", "#ff416c", "#ff4b2b", "#ffd700"]
+        particleCount: 55,
+        spread: 100,
+        origin: { y: 0 },
+        startVelocity: 20,
+        gravity: 0.6,
+        ticks: 400,
+        colors: ["#5227FF", "#A58CF4", "#38ef7d", "#11998e", "#ff416c", "#ffd700"]
       });
-
-      // Second burst after 200ms for a continuous rain shower
-      setTimeout(() => {
-        confetti({
-          particleCount: 120,
-          spread: 100,
-          origin: { y: 0.15 },
-          startVelocity: 35,
-          gravity: 0.8,
-          ticks: 300,
-          colors: ["#5227FF", "#A58CF4", "#ffffff", "#ffd700"]
-        });
-      }, 200);
     } catch (err) {
       console.warn("Confetti bypass:", err);
     }
