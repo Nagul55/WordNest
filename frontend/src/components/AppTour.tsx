@@ -120,15 +120,20 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
   const fireConfettiRain = useCallback(() => {
     try {
-      // Gentle, subtle confetti shower starting from the very top of the screen (y: 0) drifting to bottom
-      confetti({
-        particleCount: 55,
-        spread: 100,
-        origin: { y: 0 },
-        startVelocity: 20,
-        gravity: 0.6,
-        ticks: 400,
-        colors: ["#5227FF", "#A58CF4", "#38ef7d", "#11998e", "#ff416c", "#ffd700"]
+      // Fire gentle confetti rain across full width of the screen (x: 0.05 to 0.95) from top edge (y: 0) down to bottom
+      const xPositions = [0.05, 0.22, 0.4, 0.6, 0.78, 0.95];
+      xPositions.forEach((x, i) => {
+        setTimeout(() => {
+          confetti({
+            particleCount: 10,
+            spread: 60,
+            origin: { x, y: 0 },
+            startVelocity: 18,
+            gravity: 0.65,
+            ticks: 400,
+            colors: ["#5227FF", "#A58CF4", "#38ef7d", "#11998e", "#ff416c", "#ffd700"]
+          });
+        }, i * 40);
       });
     } catch (err) {
       console.warn("Confetti bypass:", err);
@@ -443,17 +448,13 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           {/* FLOATING STEP CARD WITH INSTRUCTIONS */}
           <div 
             className={`fixed z-[9999] pointer-events-auto flex ${
-              stepIndex === 6 && wordStepState !== "initial"
-                ? "inset-x-3 sm:inset-x-auto top-1/2 -translate-y-1/2 sm:right-10 justify-center sm:justify-end"
+              stepIndex === 9
+                ? "inset-0 items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+                : stepIndex === 6 && wordStepState !== "initial"
+                ? "inset-x-3 bottom-4 sm:bottom-auto sm:inset-x-auto sm:top-1/2 sm:-translate-y-1/2 sm:right-10 justify-center sm:justify-end"
                 : currentStepConfig?.cardPositionClass
-                ? currentStepConfig.cardPositionClass
-                : currentStepConfig?.tooltipPosition === 'right'
-                ? 'inset-x-3 sm:inset-x-auto sm:right-6 top-4 sm:top-6 justify-center sm:justify-end'
-                : currentStepConfig?.tooltipPosition === 'left'
-                ? 'inset-x-3 sm:inset-x-auto sm:left-6 bottom-4 sm:bottom-6 justify-center sm:justify-start'
-                : currentStepConfig?.tooltipPosition === 'top'
-                ? 'inset-x-3 top-4 sm:top-6 justify-center'
-                : 'inset-x-3 bottom-4 sm:bottom-6 justify-center'
+                ? `inset-x-3 bottom-4 sm:bottom-auto ${currentStepConfig.cardPositionClass}`
+                : "inset-x-3 bottom-4 sm:bottom-6 justify-center"
             }`}
           >
             <motion.div
