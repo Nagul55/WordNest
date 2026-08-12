@@ -241,7 +241,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
-  // Strict touch & click interception to lock out all non-tour application interactions
+  // Strict touch & click interception with coordinate bounds checking to lock non-tour application elements
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
 
@@ -255,7 +255,14 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
       if (!stepConfig) return;
 
-      const targetEl = document.getElementById(stepConfig.targetId);
+      let targetId = stepConfig.targetId;
+      if (stepIndex === 4 && hasTypedDeckName) {
+        targetId = "tour-create-deck-submit-btn";
+      } else if (stepIndex === 6 && wordStepState === "ready") {
+        targetId = "tour-add-word-submit-btn";
+      }
+
+      const targetEl = document.getElementById(`${targetId}-label`) || document.getElementById(targetId);
       const submitEl = stepIndex === 4 
         ? document.getElementById("tour-create-deck-submit-btn") 
         : stepIndex === 6 
@@ -264,10 +271,39 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       const wordInputEl = stepIndex === 6 
         ? document.getElementById("tour-word-term-input")
         : null;
-      
-      const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
-      const isSubmitClick = submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl);
-      const isWordInputClick = wordInputEl && (wordInputEl.contains(e.target as Node) || e.target === wordInputEl);
+
+      // Extract click/touch client coordinates
+      let clientX = 0;
+      let clientY = 0;
+      if (e instanceof MouseEvent) {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      } else if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      }
+
+      const isTargetNode = Boolean(
+        (targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl)) ||
+        (submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl)) ||
+        (wordInputEl && (wordInputEl.contains(e.target as Node) || e.target === wordInputEl))
+      );
+
+      // Check if interaction position (clientX, clientY) falls inside active target bounding box
+      let isTargetBounds = false;
+      const checkEl = targetEl || submitEl || wordInputEl;
+      if (checkEl) {
+        const rect = checkEl.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          isTargetBounds = 
+            clientX >= rect.left - 12 &&
+            clientX <= rect.right + 12 &&
+            clientY >= rect.top - 12 &&
+            clientY <= rect.bottom + 12;
+        }
+      }
+
+      const isTargetClick = isTargetNode || isTargetBounds;
 
       if (stepIndex === 9) {
         return;
@@ -275,29 +311,36 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
       // If interaction is NOT on target element, submit button, or word input:
       // STRICTLY BLOCK ALL TOUCHES AND CLICKS!
-      if (!isTargetClick && !isSubmitClick && !isWordInputClick) {
+      if (!isTargetClick) {
         e.stopPropagation();
         e.stopImmediatePropagation();
         e.preventDefault();
         return false;
       }
 
-      // Handle step auto-advancement on actual click
-      if (e.type === "click") {
-        if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
+      // Handle step auto-advancement on actual click or touch
+      if (e.type === "click" || e.type === "touchend") {
+        if ((stepIndex === 4 || (stepIndex === 6 && targetId === "tour-word-term-input")) && !submitEl?.contains(e.target as Node)) {
           return;
         }
 
-        if (isTargetClick || isSubmitClick) {
-          setTimeout(() => {
-            if (stepIndex < INTERACTIVE_STEPS.length) {
-              setStepIndex(prev => prev + 1);
-            } else {
-              setIsCompleted(true);
-              fireConfettiRain();
-            }
-          }, 350);
+        // If clicked via overlay backdrop coordinate match, programmatically trigger click on target element!
+        if (!isTargetNode && checkEl) {
+          try {
+            checkEl.click();
+          } catch (err) {
+            console.warn("Target click trigger bypass:", err);
+          }
         }
+
+        setTimeout(() => {
+          if (stepIndex < INTERACTIVE_STEPS.length) {
+            setStepIndex(prev => prev + 1);
+          } else {
+            setIsCompleted(true);
+            fireConfettiRain();
+          }
+        }, 350);
       }
     };
 
@@ -311,7 +354,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         document.removeEventListener(evt, handleInteraction, { capture: true });
       });
     };
-  }, [isOpen, showPrompt, stepIndex, isCompleted, fireConfettiRain]);
+  }, [isOpen, showPrompt, stepIndex, isCompleted, fireConfettiRain, hasTypedDeckName, wordStepState]);
 
   if (!isOpen) return null;
 
