@@ -453,24 +453,28 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.96 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-full max-w-[calc(100vw-2rem)] sm:max-w-xs bg-[#0b0b0e]/95 backdrop-blur-md border border-[#1e1e24] rounded-xl sm:rounded-2xl p-3.5 sm:p-4 pr-8 sm:pr-9 shadow-2xl text-white relative"
+              className={`w-full relative shadow-2xl text-white ${
+                stepIndex === 9
+                  ? "max-w-[calc(100vw-2rem)] sm:max-w-md bg-[#0b0b0e] border border-[#1e1e24] rounded-2xl sm:rounded-3xl p-6 sm:p-7 pr-7 sm:pr-8"
+                  : "max-w-[calc(100vw-2rem)] sm:max-w-xs bg-[#0b0b0e]/95 backdrop-blur-md border border-[#1e1e24] rounded-xl sm:rounded-2xl p-3.5 sm:p-4 pr-8 sm:pr-9"
+              }`}
             >
               {/* END TOUR X BUTTON */}
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute top-3 right-3 text-[#a3a3a3] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#1f1f24] cursor-pointer"
+                className="absolute top-3.5 right-3.5 text-[#a3a3a3] hover:text-white transition-colors p-1 rounded-lg hover:bg-[#1f1f24] cursor-pointer"
                 title="End Tour"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
 
               {/* INSTRUCTION TEXT */}
-              <div className="text-left mb-2.5">
-                <h4 className="text-xs sm:text-sm font-bold text-[#5227FF] mb-0.5">
+              <div className="text-left mb-4">
+                <h4 className={`font-bold text-[#5227FF] tracking-tight ${stepIndex === 9 ? 'text-lg sm:text-xl mb-2' : 'text-xs sm:text-sm mb-0.5'}`}>
                   {currentStepConfig?.title}
                 </h4>
-                <p className="text-zinc-300 text-[11px] sm:text-xs leading-relaxed">
+                <p className={`text-zinc-300 leading-relaxed ${stepIndex === 9 ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-xs'}`}>
                   {stepIndex === 4 && hasTypedDeckName
                     ? "Great! Now click the 'Create Deck' button to create your folder."
                     : stepIndex === 6 && wordStepState === "input"
@@ -485,19 +489,19 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
               {/* FOOTER NAV CONTROLS */}
               {stepIndex === 9 ? (
-                <div className="flex items-center justify-between pt-2.5 border-t border-[#1e1e24]/60">
+                <div className="flex items-center justify-between pt-3 border-t border-[#1e1e24]/60">
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className="text-[11px] sm:text-xs text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-0.5 px-1 flex items-center gap-1"
+                    className="text-xs sm:text-sm text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-1 px-2 flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-3 h-3" />
+                    <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Previous</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="px-4 py-1.5 rounded-full bg-[#5227FF] hover:bg-[#5227FF]/90 text-white text-xs font-semibold tracking-wide transition-all shadow-lg cursor-pointer flex items-center gap-1 active:scale-95"
+                    className="px-5 py-2 sm:py-2.5 rounded-full bg-[#5227FF] hover:bg-[#5227FF]/90 text-white text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-lg cursor-pointer flex items-center gap-1.5 active:scale-95"
                   >
                     <span>Next</span>
                     <ChevronRight className="w-3.5 h-3.5" />
