@@ -420,54 +420,8 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           </motion.div>
         </div>
       ) : (
-        /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET SPOTLIGHT CUTOUT & ARROW */
-        <div className="fixed inset-0 z-[999] pointer-events-none select-none">
-          {/* SVG CUTOUT SPOTLIGHT MASK OVERLAY */}
-          <svg className="fixed inset-0 w-full h-full z-[998] pointer-events-auto">
-            <defs>
-              <mask id="tour-spotlight-mask">
-                {/* White rectangle covers full screen */}
-                <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                {/* Black cutout hole over active targetRect */}
-                {targetRect && stepIndex !== 9 && (
-                  <rect
-                    x={targetRect.left - 6}
-                    y={targetRect.top - 6}
-                    width={targetRect.width + 12}
-                    height={targetRect.height + 12}
-                    rx="12"
-                    fill="black"
-                  />
-                )}
-              </mask>
-            </defs>
-
-            {/* Dark background layer masked with spotlight cutout */}
-            <rect
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              fill="rgba(0, 0, 0, 0.55)"
-              mask="url(#tour-spotlight-mask)"
-            />
-
-            {/* Glowing spotlight border around the target cutout hole */}
-            {targetRect && stepIndex !== 9 && (
-              <rect
-                x={targetRect.left - 6}
-                y={targetRect.top - 6}
-                width={targetRect.width + 12}
-                height={targetRect.height + 12}
-                rx="12"
-                fill="none"
-                stroke="#5227FF"
-                strokeWidth="2.5"
-                className="animate-pulse"
-                style={{ pointerEvents: "none" }}
-              />
-            )}
-          </svg>
+        /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
+        <div className="fixed inset-0 z-[999] pointer-events-auto select-none bg-black/25 backdrop-blur-[1px]">
 
 
           {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
