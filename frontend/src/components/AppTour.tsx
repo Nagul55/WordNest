@@ -118,6 +118,42 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
   const [hasTypedDeckName, setHasTypedDeckName] = useState(false);
   const [wordStepState, setWordStepState] = useState<"initial" | "input" | "generating" | "ready">("initial");
 
+  const fireConfettiRain = useCallback(() => {
+    try {
+      // Top rain burst (falling from top to bottom across full screen)
+      confetti({
+        particleCount: 180,
+        spread: 120,
+        origin: { y: 0.05 },
+        startVelocity: 45,
+        gravity: 0.9,
+        ticks: 350,
+        colors: ["#5227FF", "#A58CF4", "#38ef7d", "#11998e", "#ff416c", "#ff4b2b", "#ffd700"]
+      });
+
+      // Second burst after 200ms for a continuous rain shower
+      setTimeout(() => {
+        confetti({
+          particleCount: 120,
+          spread: 100,
+          origin: { y: 0.15 },
+          startVelocity: 35,
+          gravity: 0.8,
+          ticks: 300,
+          colors: ["#5227FF", "#A58CF4", "#ffffff", "#ffd700"]
+        });
+      }, 200);
+    } catch (err) {
+      console.warn("Confetti bypass:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isCompleted) {
+      fireConfettiRain();
+    }
+  }, [isCompleted, fireConfettiRain]);
+
   // Immediately clear rect & trigger tab navigation on step change
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
@@ -267,15 +303,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
           } else {
             // Tour finished!
             setIsCompleted(true);
-            try {
-              confetti({
-                particleCount: 150,
-                spread: 80,
-                origin: { y: 0.3 }
-              });
-            } catch (err) {
-              console.warn("Confetti bypass:", err);
-            }
+            fireConfettiRain();
           }
         }, 350);
       }
@@ -283,7 +311,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
     document.addEventListener("click", handleDocumentClick, true);
     return () => document.removeEventListener("click", handleDocumentClick, true);
-  }, [isOpen, showPrompt, stepIndex, isCompleted]);
+  }, [isOpen, showPrompt, stepIndex, isCompleted, fireConfettiRain]);
 
   if (!isOpen) return null;
 
@@ -305,12 +333,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       setStepIndex(prev => prev + 1);
     } else {
       setIsCompleted(true);
-    }
-  };
-
-  const handlePrevStep = () => {
-    if (stepIndex > 1) {
-      setStepIndex(prev => prev - 1);
+      fireConfettiRain();
     }
   };
 
@@ -489,15 +512,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
               {/* FOOTER NAV CONTROLS */}
               {stepIndex === 9 ? (
-                <div className="flex items-center justify-between pt-3 border-t border-[#1e1e24]/60">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="text-xs sm:text-sm text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-1 px-2 flex items-center gap-1"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                    <span>Previous</span>
-                  </button>
+                <div className="flex items-center justify-end pt-3 border-t border-[#1e1e24]/60">
                   <button
                     type="button"
                     onClick={handleNextStep}
@@ -505,17 +520,6 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
                   >
                     <span>Next</span>
                     <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : stepIndex > 1 ? (
-                <div className="flex items-center justify-start pt-2 border-t border-[#1e1e24]/60">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="text-[11px] sm:text-xs text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-0.5 px-1 flex items-center gap-1"
-                  >
-                    <ChevronLeft className="w-3 h-3" />
-                    <span>Previous</span>
                   </button>
                 </div>
               ) : (
