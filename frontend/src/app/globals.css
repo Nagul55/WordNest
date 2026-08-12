@@ -163,6 +163,12 @@ body {
   touch-action: manipulation;
 }
 
+/* Elevate active tour targets above the tour overlay backdrop */
+.tour-target-elevated {
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+}
+
 /* Prevent auto-zoom on iOS Safari inputs */
 @supports (-webkit-touch-callout: none) {
   input[type="text"],

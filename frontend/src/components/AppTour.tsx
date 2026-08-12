@@ -241,6 +241,32 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
+  // Dynamically elevate active step target elements above the tour backdrop layer
+  useEffect(() => {
+    if (!isOpen || showPrompt || isCompleted) return;
+
+    const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
+    if (!stepConfig) return;
+
+    const targetEl = document.getElementById(stepConfig.targetId);
+    const submitEl = stepIndex === 4 
+      ? document.getElementById("tour-create-deck-submit-btn") 
+      : stepIndex === 6 
+      ? document.getElementById("tour-add-word-submit-btn") 
+      : null;
+    const wordInputEl = stepIndex === 6 
+      ? document.getElementById("tour-word-term-input")
+      : null;
+
+    const activeEls = [targetEl, submitEl, wordInputEl].filter(Boolean) as HTMLElement[];
+
+    activeEls.forEach(el => el.classList.add("tour-target-elevated"));
+
+    return () => {
+      activeEls.forEach(el => el.classList.remove("tour-target-elevated"));
+    };
+  }, [isOpen, showPrompt, isCompleted, stepIndex]);
+
   // Strict touch & click interception to lock out all non-tour application interactions
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
