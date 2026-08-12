@@ -225,6 +225,66 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     }
   };
 
+  // Compute style position dynamically based on targetRect & window size
+  const getCardStyle = (): React.CSSProperties => {
+    if (!targetRect || typeof window === "undefined") return {};
+
+    const isDesktop = window.innerWidth >= 640;
+    if (!isDesktop) return {}; // On small screens, use CSS fallback classes
+
+    const pos = currentStepConfig?.tooltipPosition || "bottom";
+    const cardWidth = 320; // max-w-xs approx 320px
+
+    if (pos === "left") {
+      const rightDistance = Math.max(16, window.innerWidth - targetRect.left + 24);
+      const maxRight = window.innerWidth - cardWidth - 16;
+      const finalRight = Math.min(rightDistance, maxRight);
+      const topPos = Math.max(16, Math.min(window.innerHeight - 200, targetRect.top - 10));
+
+      return {
+        top: `${topPos}px`,
+        right: `${finalRight}px`,
+        bottom: "auto",
+        left: "auto",
+        position: "fixed"
+      };
+    } else if (pos === "right") {
+      const leftPos = Math.min(window.innerWidth - cardWidth - 16, targetRect.right + 24);
+      const topPos = Math.max(16, Math.min(window.innerHeight - 200, targetRect.top - 10));
+
+      return {
+        top: `${topPos}px`,
+        left: `${Math.max(16, leftPos)}px`,
+        bottom: "auto",
+        right: "auto",
+        position: "fixed"
+      };
+    } else if (pos === "top") {
+      const bottomPos = Math.max(16, window.innerHeight - targetRect.top + 16);
+      const leftPos = Math.max(16, Math.min(window.innerWidth - cardWidth - 16, targetRect.left + targetRect.width / 2 - cardWidth / 2));
+
+      return {
+        bottom: `${bottomPos}px`,
+        left: `${leftPos}px`,
+        top: "auto",
+        right: "auto",
+        position: "fixed"
+      };
+    } else {
+      // "bottom"
+      const topPos = Math.min(window.innerHeight - 200, targetRect.bottom + 16);
+      const leftPos = Math.max(16, Math.min(window.innerWidth - cardWidth - 16, targetRect.left + targetRect.width / 2 - cardWidth / 2));
+
+      return {
+        top: `${topPos}px`,
+        left: `${leftPos}px`,
+        bottom: "auto",
+        right: "auto",
+        position: "fixed"
+      };
+    }
+  };
+
   return (
     <AnimatePresence>
       {/* 1. STARTING TOUR PROMPT MODAL (Small, compact, matching Stepper style with WordNest logo SVG) */}
@@ -311,31 +371,60 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
         <div className="fixed inset-0 z-[999] pointer-events-none select-none">
 
-
           {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
           {targetRect && (() => {
-            const isNearTop = targetRect.top < 85;
-            const arrowTop = isNearTop ? targetRect.bottom + 12 : Math.max(12, targetRect.top - 48);
+            const pos = currentStepConfig?.tooltipPosition || "bottom";
+            let arrowStyle: React.CSSProperties = {};
+            let ArrowIcon = ArrowDown;
+
+            if (pos === "left") {
+              arrowStyle = {
+                position: "fixed",
+                left: Math.max(12, targetRect.left - 44),
+                top: targetRect.top + targetRect.height / 2 - 18,
+                zIndex: 9999,
+                pointerEvents: "none"
+              };
+              ArrowIcon = ArrowRight;
+            } else if (pos === "right") {
+              arrowStyle = {
+                position: "fixed",
+                left: targetRect.right + 12,
+                top: targetRect.top + targetRect.height / 2 - 18,
+                zIndex: 9999,
+                pointerEvents: "none"
+              };
+              ArrowIcon = ArrowLeft;
+            } else if (targetRect.top < 85) {
+              arrowStyle = {
+                position: "fixed",
+                left: targetRect.left + targetRect.width / 2 - 18,
+                top: targetRect.bottom + 12,
+                zIndex: 9999,
+                pointerEvents: "none"
+              };
+              ArrowIcon = ArrowUp;
+            } else {
+              arrowStyle = {
+                position: "fixed",
+                left: targetRect.left + targetRect.width / 2 - 18,
+                top: Math.max(12, targetRect.top - 48),
+                zIndex: 9999,
+                pointerEvents: "none"
+              };
+              ArrowIcon = ArrowDown;
+            }
+
             return (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.7 }}
-                style={{
-                  position: "fixed",
-                  left: targetRect.left + targetRect.width / 2 - 16,
-                  top: arrowTop,
-                  zIndex: 9999,
-                  pointerEvents: "none"
-                }}
+                style={arrowStyle}
                 className="flex flex-col items-center text-[#5227FF] drop-shadow-[0_4px_12px_rgba(82,39,255,0.8)]"
               >
                 <div className="p-2 rounded-full bg-[#5227FF] text-white shadow-xl animate-bounce">
-                  {isNearTop ? (
-                    <ArrowUp className="w-5 h-5 text-white" />
-                  ) : (
-                    <ArrowDown className="w-5 h-5 text-white" />
-                  )}
+                  <ArrowIcon className="w-5 h-5 text-white" />
                 </div>
               </motion.div>
             );
@@ -343,14 +432,17 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
 
           {/* FLOATING STEP CARD WITH INSTRUCTIONS */}
           <div 
+            style={getCardStyle()}
             className={`fixed z-[9999] pointer-events-auto flex ${
-              currentStepConfig?.tooltipPosition === 'right'
-                ? 'inset-x-3 sm:inset-x-auto sm:right-6 top-4 sm:top-6 justify-center sm:justify-end'
-                : currentStepConfig?.tooltipPosition === 'left'
-                ? 'inset-x-3 sm:inset-x-auto sm:left-6 bottom-4 sm:bottom-6 justify-center sm:justify-start'
-                : currentStepConfig?.tooltipPosition === 'top'
-                ? 'inset-x-3 top-4 sm:top-6 justify-center'
-                : 'inset-x-3 bottom-4 sm:bottom-6 justify-center'
+              !targetRect || typeof window === 'undefined' || window.innerWidth < 640
+                ? currentStepConfig?.tooltipPosition === 'right'
+                  ? 'inset-x-3 sm:inset-x-auto sm:right-6 top-4 sm:top-6 justify-center sm:justify-end'
+                  : currentStepConfig?.tooltipPosition === 'left'
+                  ? 'inset-x-3 sm:inset-x-auto sm:right-[340px] top-16 sm:top-20 justify-center sm:justify-end'
+                  : currentStepConfig?.tooltipPosition === 'top'
+                  ? 'inset-x-3 top-4 sm:top-6 justify-center'
+                  : 'inset-x-3 bottom-4 sm:bottom-6 justify-center'
+                : ''
             }`}
           >
             <motion.div
