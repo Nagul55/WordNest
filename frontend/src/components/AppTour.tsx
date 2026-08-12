@@ -83,6 +83,22 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
     tooltipPosition: "right",
     cardPositionClass: "inset-x-3 sm:inset-x-auto top-48 sm:top-[15.5rem] sm:right-10 justify-center sm:justify-end"
+  },
+  {
+    stepIndex: 7,
+    targetId: "tour-menu-toggle-btn",
+    title: "7. Open Navigation Menu",
+    instruction: "Click the menu button in the top-right corner to open navigation.",
+    tooltipPosition: "bottom"
+  },
+  {
+    stepIndex: 8,
+    targetId: "tour-menu-item-practice",
+    title: "8. Start Practice Session",
+    instruction: "Click 'Practice' in the menu to start reviewing your flashcards.",
+    tooltipPosition: "left",
+    cardPositionClass: "inset-x-3 sm:inset-x-auto top-12 sm:top-16 sm:right-[400px] justify-center sm:justify-end",
+    fallbackTab: "practice"
   }
 ];
 
@@ -101,8 +117,8 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     setHasTypedDeckName(false);
     setWordStepState("initial");
 
-    // Close side menu when moving past step 2
-    if (stepIndex > 2 && typeof window !== "undefined") {
+    // Close side menu when moving past step 2 (except step 7 & 8)
+    if (stepIndex > 2 && stepIndex !== 7 && stepIndex !== 8 && typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("wordnest-close-menu"));
     }
 
