@@ -83,11 +83,13 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
   const [stepIndex, setStepIndex] = useState(1);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [hasTypedDeckName, setHasTypedDeckName] = useState(false);
 
   // Immediately clear rect & trigger tab navigation on step change
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
     setTargetRect(null);
+    setHasTypedDeckName(false);
 
     // Close side menu when moving past step 2
     if (stepIndex > 2 && typeof window !== "undefined") {
@@ -111,7 +113,17 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
     if (!stepConfig) return;
 
-    const targetId = stepConfig.targetId;
+    let targetId = stepConfig.targetId;
+
+    if (stepIndex === 4) {
+      const inputEl = document.getElementById("tour-deck-name-input") as HTMLInputElement | null;
+      const isTyped = Boolean(inputEl && inputEl.value.trim().length > 0);
+      setHasTypedDeckName(isTyped);
+      if (isTyped) {
+        targetId = "tour-create-deck-submit-btn";
+      }
+    }
+
     const el = document.getElementById(`${targetId}-label`) || document.getElementById(targetId);
     if (el) {
       const rect = el.getBoundingClientRect();
@@ -384,7 +396,9 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
                   {currentStepConfig?.title}
                 </h4>
                 <p className="text-zinc-300 text-[11px] sm:text-xs leading-relaxed">
-                  {currentStepConfig?.instruction}
+                  {stepIndex === 4 && hasTypedDeckName
+                    ? "Great! Now click the 'Create Deck' button to create your folder."
+                    : currentStepConfig?.instruction}
                 </p>
               </div>
 
