@@ -99,6 +99,14 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     tooltipPosition: "left",
     cardPositionClass: "inset-x-3 sm:inset-x-auto top-12 sm:top-16 sm:right-[400px] justify-center sm:justify-end",
     fallbackTab: "practice"
+  },
+  {
+    stepIndex: 9,
+    targetId: "tour-practice-overview",
+    title: "9. Practice Your Words",
+    instruction: "Now you can practice the words you created in your deck through various interactive modules like Smart Flashcards and Speed Match.",
+    cardPositionClass: "fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm pointer-events-auto",
+    fallbackTab: "practice"
   }
 ];
 
@@ -138,6 +146,11 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     if (showPrompt || isCompleted) return;
     const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
     if (!stepConfig) return;
+
+    if (stepIndex === 9) {
+      setTargetRect(null);
+      return;
+    }
 
     let targetId = stepConfig.targetId;
 
@@ -227,6 +240,10 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
       const isWordInputClick = stepIndex === 6 && (
         Boolean(document.getElementById("tour-word-term-input")?.contains(e.target as Node)) || e.target === document.getElementById("tour-word-term-input")
       );
+
+      if (stepIndex === 9) {
+        return;
+      }
 
       if (!isTargetClick && !isSubmitClick && !isWordInputClick) {
         // Block clicks outside target
@@ -467,7 +484,26 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               </div>
 
               {/* FOOTER NAV CONTROLS */}
-              {stepIndex > 1 ? (
+              {stepIndex === 9 ? (
+                <div className="flex items-center justify-between pt-2.5 border-t border-[#1e1e24]/60">
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="text-[11px] sm:text-xs text-[#a3a3a3] hover:text-white transition-colors cursor-pointer font-medium py-0.5 px-1 flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                    <span>Previous</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="px-4 py-1.5 rounded-full bg-[#5227FF] hover:bg-[#5227FF]/90 text-white text-xs font-semibold tracking-wide transition-all shadow-lg cursor-pointer flex items-center gap-1 active:scale-95"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : stepIndex > 1 ? (
                 <div className="flex items-center justify-start pt-2 border-t border-[#1e1e24]/60">
                   <button
                     type="button"
