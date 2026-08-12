@@ -241,38 +241,12 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     };
   }, [updateTargetCoordinates]);
 
-  // Dynamically elevate active step target elements above the tour backdrop layer
+  // Click listeners to auto-advance interactive steps
   useEffect(() => {
     if (!isOpen || showPrompt || isCompleted) return;
 
-    const stepConfig = INTERACTIVE_STEPS.find(s => s.stepIndex === stepIndex);
-    if (!stepConfig) return;
-
-    const targetEl = document.getElementById(stepConfig.targetId);
-    const submitEl = stepIndex === 4 
-      ? document.getElementById("tour-create-deck-submit-btn") 
-      : stepIndex === 6 
-      ? document.getElementById("tour-add-word-submit-btn") 
-      : null;
-    const wordInputEl = stepIndex === 6 
-      ? document.getElementById("tour-word-term-input")
-      : null;
-
-    const activeEls = [targetEl, submitEl, wordInputEl].filter(Boolean) as HTMLElement[];
-
-    activeEls.forEach(el => el.classList.add("tour-target-elevated"));
-
-    return () => {
-      activeEls.forEach(el => el.classList.remove("tour-target-elevated"));
-    };
-  }, [isOpen, showPrompt, isCompleted, stepIndex]);
-
-  // Strict touch & click interception to lock out all non-tour application interactions
-  useEffect(() => {
-    if (!isOpen || showPrompt || isCompleted) return;
-
-    const handleInteraction = (e: Event) => {
-      // Allow clicks/touches inside the tour card overlay itself
+    const handleDocumentClick = (e: MouseEvent) => {
+      // Allow clicks in the tour overlay itself
       const tourOverlay = document.getElementById("tour-overlay-card");
       if (tourOverlay && (tourOverlay.contains(e.target as Node) || e.target === tourOverlay)) {
         return;
@@ -287,56 +261,47 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         : stepIndex === 6 
         ? document.getElementById("tour-add-word-submit-btn") 
         : null;
-      const wordInputEl = stepIndex === 6 
-        ? document.getElementById("tour-word-term-input")
-        : null;
       
       const isTargetClick = targetEl && (targetEl.contains(e.target as Node) || e.target === targetEl);
       const isSubmitClick = submitEl && (submitEl.contains(e.target as Node) || e.target === submitEl);
-      const isWordInputClick = wordInputEl && (wordInputEl.contains(e.target as Node) || e.target === wordInputEl);
+      const isWordInputClick = stepIndex === 6 && (
+        Boolean(document.getElementById("tour-word-term-input")?.contains(e.target as Node)) || e.target === document.getElementById("tour-word-term-input")
+      );
 
       if (stepIndex === 9) {
         return;
       }
 
-      // If interaction is NOT on target element, submit button, or word input:
-      // STRICTLY BLOCK ALL TOUCHES AND CLICKS!
       if (!isTargetClick && !isSubmitClick && !isWordInputClick) {
+        // Block clicks outside target
         e.stopPropagation();
-        e.stopImmediatePropagation();
         e.preventDefault();
-        return false;
+        return;
       }
 
-      // Handle step auto-advancement on actual click
-      if (e.type === "click") {
-        if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
-          return;
-        }
+      // Special cases:
+      // 1. For Step 4, clicking input allows typing without auto-advancing.
+      // 2. For Step 6, clicking opening button or input field allows modal open/typing without completing tour.
+      if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
+        return;
+      }
 
-        if (isTargetClick || isSubmitClick) {
-          setTimeout(() => {
-            if (stepIndex < INTERACTIVE_STEPS.length) {
-              setStepIndex(prev => prev + 1);
-            } else {
-              setIsCompleted(true);
-              fireConfettiRain();
-            }
-          }, 350);
-        }
+      if (isTargetClick || isSubmitClick) {
+        // Auto-advance step after small delay for action execution
+        setTimeout(() => {
+          if (stepIndex < INTERACTIVE_STEPS.length) {
+            setStepIndex(prev => prev + 1);
+          } else {
+            // Tour finished!
+            setIsCompleted(true);
+            fireConfettiRain();
+          }
+        }, 350);
       }
     };
 
-    const interactionEvents = ["click", "touchstart", "touchend", "pointerdown", "mousedown"];
-    interactionEvents.forEach(evt => {
-      document.addEventListener(evt, handleInteraction, { capture: true });
-    });
-
-    return () => {
-      interactionEvents.forEach(evt => {
-        document.removeEventListener(evt, handleInteraction, { capture: true });
-      });
-    };
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
   }, [isOpen, showPrompt, stepIndex, isCompleted, fireConfettiRain]);
 
   if (!isOpen) return null;
@@ -447,7 +412,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         </div>
       ) : (
         /* 2. REAL-TIME INTERACTIVE GUIDED STEP OVERLAY WITH ANIMATED TARGET ARROW */
-        <div className="fixed inset-0 z-[999] pointer-events-auto select-none bg-black/25 backdrop-blur-[1px]">
+        <div className="fixed inset-0 z-[999] pointer-events-none select-none">
 
 
           {/* ANIMATED PULSING ARROW POINTING TO TARGET */}
@@ -485,10 +450,10 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
               stepIndex === 9
                 ? "inset-0 items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
                 : stepIndex === 6 && wordStepState !== "initial"
-                ? "inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-auto sm:inset-x-auto sm:top-1/2 sm:-translate-y-1/2 sm:right-10 justify-center sm:justify-end"
+                ? "inset-x-3 bottom-4 sm:bottom-auto sm:inset-x-auto sm:top-1/2 sm:-translate-y-1/2 sm:right-10 justify-center sm:justify-end"
                 : currentStepConfig?.cardPositionClass
-                ? `inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-auto ${currentStepConfig.cardPositionClass}`
-                : "inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 justify-center"
+                ? `inset-x-3 bottom-4 sm:bottom-auto ${currentStepConfig.cardPositionClass}`
+                : "inset-x-3 bottom-4 sm:bottom-6 justify-center"
             }`}
           >
             <motion.div
