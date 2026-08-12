@@ -81,7 +81,8 @@ const INTERACTIVE_STEPS: StepTargetConfig[] = [
     targetId: "tour-add-word-btn",
     title: "6. Add Your First Word",
     instruction: "Click 'Add Word' to save your first vocabulary term in this deck.",
-    tooltipPosition: "right"
+    tooltipPosition: "right",
+    cardPositionClass: "inset-x-3 sm:inset-x-auto top-48 sm:top-[15.5rem] sm:right-10 justify-center sm:justify-end"
   }
 ];
 
