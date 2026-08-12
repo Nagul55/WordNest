@@ -219,8 +219,10 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         return;
       }
 
-      // Special case: clicking input fields allows typing but doesn't auto-advance.
-      if ((stepIndex === 4 || (stepIndex === 6 && isWordInputClick)) && !isSubmitClick) {
+      // Special cases:
+      // 1. For Step 4, clicking input allows typing without auto-advancing.
+      // 2. For Step 6, clicking opening button or input field allows modal open/typing without completing tour.
+      if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
         return;
       }
 
