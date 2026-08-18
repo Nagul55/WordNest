@@ -229,6 +229,31 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
     return null;
   };
 
+  // 3. Fallback Datamuse API
+  const fetchDatamuse = async (): Promise<string | null> => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(cleanWord)}&md=d&max=1`, {
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0 && data[0].defs && data[0].defs.length > 0) {
+          const rawDef = data[0].defs[0];
+          // Datamuse defs look like "n\t(especially in the plural) Tattered clothes."
+          const cleanDef = rawDef.split("\t").pop();
+          if (cleanDef) {
+            const formatted = cleanDef.trim().charAt(0).toUpperCase() + cleanDef.trim().slice(1);
+            return formatted.endsWith(".") ? formatted : formatted + ".";
+          }
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
   // Try Free Dictionary API first for instant 50ms response
   const dictResult = await fetchFreeDict();
   if (dictResult) {
@@ -241,7 +266,13 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
     return aiResult;
   }
 
-  return `A shallow pool of liquid or water on a surface or path.`;
+  // Fallback to Datamuse API
+  const dataMuseResult = await fetchDatamuse();
+  if (dataMuseResult) {
+    return dataMuseResult;
+  }
+
+  return `A vocabulary term referring to ${cleanWord.toLowerCase()}.`;
 };
 
 export const fetchWordExample = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
