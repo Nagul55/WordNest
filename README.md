@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest <img src="https://api.iconify.design/lucide/zap.svg?color=%23FBBF24" width="28" height="28" align="center" />
+# <img src="https://raw.githubusercontent.com/Nagul55/WordNest/main/frontend/public/Wordnest.svg" alt="WordNest Logo" width="42" align="center" /> WordNest
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge&logo=github-actions)](https://github.com/Nagul55/WordNest)
 [![License](https://img.shields.io/badge/Google_Cloud-Verified-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://word-nest-seven.vercel.app)
@@ -31,7 +31,7 @@
 
 ## <img src="https://api.iconify.design/lucide/lightbulb.svg?color=%23F59E0B" width="24" height="24" align="center" /> Why WordNest?
 
-Traditional flashcard platforms rely on manual input and static repetition, leading to study fatigue and inefficient learning. **WordNest** bridges this gap by combining **Socratic AI tutoring**, **instant AI deck generation from raw notes**, and **semantic sentence grading** into a sleek, ultra-responsive web platform designed for students and life-long learners.
+Traditional flashcard platforms rely on manual input and static repetition, leading to study fatigue and inefficient learning. **WordNest** bridges this gap by combining **Socratic AI tutoring**, **instant AI deck generation from raw notes**, **interactive guided onboarding tour**, and **semantic sentence grading** into a sleek, ultra-responsive web platform designed for students and life-long learners.
 
 ---
 
@@ -51,6 +51,7 @@ Traditional flashcard platforms rely on manual input and static repetition, lead
 
 | Icon | Feature Name | Description | Tech Used |
 | :---: | :--- | :--- | :--- |
+| <img src="https://api.iconify.design/lucide/compass.svg?color=%235227FF" width="20" height="20" /> | **Interactive Guided App Tour** | Smart 9-step step-by-step interactive onboarding walkthrough guiding new users to create study decks, generate AI vocabulary terms, and navigate study modules. | React, Framer Motion, Supabase DB |
 | <img src="https://api.iconify.design/lucide/layers.svg?color=%23A58CF4" width="20" height="20" /> | **3D Realistic Flashcards** | Hardware-accelerated 3D flip card physics with Web Speech API multi-lingual TTS pronunciation and keyboard navigation (`Space`, `Arrows`). | Next.js, Framer Motion, Web Speech API |
 | <img src="https://api.iconify.design/lucide/wand-2.svg?color=%23EC4899" width="20" height="20" /> | **AI Magic Notes Studio** | Converts raw lecture transcripts, essays, or notes into structured summary outlines, flashcards, and multiple-choice quizzes in seconds. | Groq Cloud (Llama 3.1), FastAPI, OpenAI SDK |
 | <img src="https://api.iconify.design/lucide/graduation-cap.svg?color=%23F59E0B" width="20" height="20" /> | **Socratic AI Tutor** | Conversational AI study assistant that quizzes students using the Socratic method to build intuitive conceptual understanding. | Groq Llama 3.1, Python AsyncIO |
