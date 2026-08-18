@@ -254,16 +254,16 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
     return null;
   };
 
-  // Try Free Dictionary API first for instant 50ms response
-  const dictResult = await fetchFreeDict();
-  if (dictResult) {
-    return dictResult;
-  }
-
-  // Fallback to Groq AI backend API
+  // Try Groq AI backend API FIRST for tailored 1-sentence definitions
   const aiResult = await fetchGroqAi();
   if (aiResult) {
     return aiResult;
+  }
+
+  // Fallback to Free Dictionary API
+  const dictResult = await fetchFreeDict();
+  if (dictResult) {
+    return dictResult;
   }
 
   // Fallback to Datamuse API
