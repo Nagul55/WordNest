@@ -7,6 +7,7 @@ import { Lock, Mail, User, AlertCircle, CheckCircle2, ArrowRight, ShieldCheck, L
 import { motion, AnimatePresence } from "framer-motion";
 import Dashboard from "@/components/Dashboard";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import { warmupBackend } from "@/lib/api";
 
 const WordNestLogoHeader = () => {
   return (
@@ -154,6 +155,7 @@ export default function AuthPortalPage() {
 
   // Listen to Supabase Auth State on load
   useEffect(() => {
+    warmupBackend();
     let sessionChecked = false;
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {

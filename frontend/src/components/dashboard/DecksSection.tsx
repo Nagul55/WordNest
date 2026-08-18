@@ -274,20 +274,15 @@ export default function DecksSection({
     }
 
     const timer = setTimeout(async () => {
-      // 1. Fetch AI definition (Groq) and overwrite definition
+      // 1. Fetch fast multi-tier definition (Free Dict + Groq AI + Fallback)
       setIsGeneratingDefinition(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ word: term })
-        });
-        const data = await res.json();
-        if (data.status === "success" && data.definition) {
-          setWordForm(prev => ({ ...prev, meaning: data.definition }));
+        const definition = await fetchWordDefinition(term);
+        if (definition) {
+          setWordForm(prev => ({ ...prev, meaning: definition }));
         }
       } catch (err) {
-        console.error("AI definition generation error:", err);
+        console.error("Definition generation error:", err);
       } finally {
         setIsGeneratingDefinition(false);
       }
@@ -675,14 +670,9 @@ export default function DecksSection({
 
     setIsGeneratingDefinition(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word: targetWord })
-      });
-      const data = await res.json();
-      if (data.status === "success" && data.definition) {
-        setWordForm(prev => ({ ...prev, meaning: data.definition }));
+      const definition = await fetchWordDefinition(targetWord);
+      if (definition) {
+        setWordForm(prev => ({ ...prev, meaning: definition }));
       }
     } catch (err) {
       console.error("AI definition generation error:", err);
@@ -748,17 +738,12 @@ export default function DecksSection({
     const timer = setTimeout(async () => {
       setIsGeneratingDefinition(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ word: term })
-        });
-        const data = await res.json();
-        if (data.status === "success" && data.definition) {
-          setEditWordForm(prev => ({ ...prev, meaning: data.definition }));
+        const definition = await fetchWordDefinition(term);
+        if (definition) {
+          setEditWordForm(prev => ({ ...prev, meaning: definition }));
         }
       } catch (err) {
-        console.error("AI definition generation error:", err);
+        console.error("Edit definition generation error:", err);
       } finally {
         setIsGeneratingDefinition(false);
       }
@@ -787,17 +772,12 @@ export default function DecksSection({
 
     setIsGeneratingDefinition(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word: targetWord })
-      });
-      const data = await res.json();
-      if (data.status === "success" && data.definition) {
-        setEditWordForm(prev => ({ ...prev, meaning: data.definition }));
+      const definition = await fetchWordDefinition(targetWord);
+      if (definition) {
+        setEditWordForm(prev => ({ ...prev, meaning: definition }));
       }
     } catch (err) {
-      console.error("AI definition generation error:", err);
+      console.error("Edit definition generation error:", err);
     } finally {
       setIsGeneratingDefinition(false);
     }

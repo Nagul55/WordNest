@@ -26,6 +26,7 @@ import PracticeSection from "./dashboard/PracticeSection";
 import StaggeredMenu from "./StaggeredMenu";
 import AppTour from "./AppTour";
 import { supabase } from "@/lib/supabase";
+import { warmupBackend } from "@/lib/api";
 
 interface DashboardProps {
   user: any;
@@ -171,6 +172,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
 
   // Check if user is a new signed in user who hasn't completed guided tour
   useEffect(() => {
+    warmupBackend();
     if (!user?.id || typeof window === "undefined") return;
 
     const checkTourState = async () => {

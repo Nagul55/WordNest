@@ -163,22 +163,84 @@ export const chatSocraticTutor = async (
   }
 };
 
-export const fetchWordDefinition = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
-  const user_context = explicitUserContext || getStoredUserContext();
+/**
+ * Asynchronously pings the backend service to wake up cold-started containers
+ * (e.g. Render free tier) in advance as soon as the app loads.
+ */
+let warmupInitiated = false;
+export const warmupBackend = () => {
+  if (warmupInitiated || typeof window === "undefined") return;
+  warmupInitiated = true;
   try {
-    const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word, user_context })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.definition;
-    }
-    throw new Error("API error");
-  } catch (e) {
-    throw e;
+    fetch(`${API_BASE_URL}/health`, { method: "GET", mode: "cors" }).catch(() => {});
+  } catch (e) {}
+};
+
+export const fetchWordDefinition = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
+  const cleanWord = word.trim();
+  if (!cleanWord) return "";
+
+  // 1. Fast Free Dictionary API (50ms response time!)
+  const fetchFreeDict = async (): Promise<string | null> => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 1500);
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        const meanings = data[0]?.meanings;
+        if (meanings && meanings.length > 0) {
+          const def = meanings[0]?.definitions[0]?.definition;
+          if (def) {
+            const formatted = def.charAt(0).toUpperCase() + def.slice(1);
+            return formatted.endsWith(".") ? formatted : formatted + ".";
+          }
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  // 2. Groq AI Backend API
+  const fetchGroqAi = async (): Promise<string | null> => {
+    try {
+      const user_context = explicitUserContext || getStoredUserContext();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: cleanWord, user_context }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.definition && data.definition.trim().length > 0) {
+          return data.definition.trim();
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  // Execute Free Dictionary API first for instant ~50ms definition
+  const dictResult = await fetchFreeDict();
+  if (dictResult) {
+    return dictResult;
   }
+
+  // Fallback to Groq AI backend
+  const aiResult = await fetchGroqAi();
+  if (aiResult) {
+    return aiResult;
+  }
+
+  // Final fallback definition so definition is NEVER left empty
+  return `A vocabulary term referring to ${cleanWord.toLowerCase()}.`;
 };
 
 export const fetchWordExample = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
