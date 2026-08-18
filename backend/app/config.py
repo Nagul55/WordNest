@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL_NAME = os.getenv("GROQ_MODEL_NAME", "llama-3.1-8b-instant")
+GROQ_MODEL_NAME = os.getenv("GROQ_MODEL_NAME", "groq/compound")
 
 UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY", "")
 UNSPLASH_SECRET_KEY = os.getenv("UNSPLASH_SECRET_KEY", "")

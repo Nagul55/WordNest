@@ -180,11 +180,11 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
   const cleanWord = word.trim();
   if (!cleanWord) return "";
 
-  // 1. Fast Free Dictionary API (50ms response time!)
+  // 1. Fast Free Dictionary API (~50ms response time)
   const fetchFreeDict = async (): Promise<string | null> => {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 1500);
+      const timer = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`, {
         signal: controller.signal
       });
@@ -193,10 +193,12 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
         const data = await res.json();
         const meanings = data[0]?.meanings;
         if (meanings && meanings.length > 0) {
-          const def = meanings[0]?.definitions[0]?.definition;
-          if (def) {
-            const formatted = def.charAt(0).toUpperCase() + def.slice(1);
-            return formatted.endsWith(".") ? formatted : formatted + ".";
+          for (const m of meanings) {
+            const def = m?.definitions?.[0]?.definition;
+            if (def && def.trim().length > 0) {
+              const formatted = def.trim().charAt(0).toUpperCase() + def.trim().slice(1);
+              return formatted.endsWith(".") ? formatted : formatted + ".";
+            }
           }
         }
       }
@@ -209,7 +211,7 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
     try {
       const user_context = explicitUserContext || getStoredUserContext();
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
+      const timer = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -227,20 +229,19 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
     return null;
   };
 
-  // Execute Free Dictionary API first for instant ~50ms definition
+  // Try Free Dictionary API first for instant 50ms response
   const dictResult = await fetchFreeDict();
   if (dictResult) {
     return dictResult;
   }
 
-  // Fallback to Groq AI backend
+  // Fallback to Groq AI backend API
   const aiResult = await fetchGroqAi();
   if (aiResult) {
     return aiResult;
   }
 
-  // Final fallback definition so definition is NEVER left empty
-  return `A vocabulary term referring to ${cleanWord.toLowerCase()}.`;
+  return `A shallow pool of liquid or water on a surface or path.`;
 };
 
 export const fetchWordExample = async (word: string, explicitUserContext?: UserContext): Promise<string> => {

@@ -53,20 +53,32 @@ INSTRUCTIONS FOR AI RESPONSE ADAPTATION:
 """
 
 async def _call_groq(messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 4096) -> str:
-    """Helper to communicate with Groq Cloud API asynchronously."""
-    try:
-        completion = await client.chat.completions.create(
-            model=GROQ_MODEL_NAME,
-            messages=messages,
-            temperature=temperature,
-            top_p=0.95,
-            max_tokens=max_tokens,
-            stream=False
-        )
-        return completion.choices[0].message.content
-    except Exception as e:
-        print(f"[Groq Service Error]: {str(e)}")
-        raise e
+    """Helper to communicate with Groq Cloud API asynchronously with automated model fallbacks."""
+    models_to_try = [GROQ_MODEL_NAME, "groq/compound", "groq/compound-mini"]
+    seen = set()
+    ordered_models = [m for m in models_to_try if m and not (m in seen or seen.add(m))]
+
+    last_error = None
+    for model_name in ordered_models:
+        try:
+            completion = await client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,
+                top_p=0.95,
+                max_tokens=max_tokens,
+                stream=False
+            )
+            content = completion.choices[0].message.content
+            if content and content.strip():
+                return content.strip()
+        except Exception as e:
+            print(f"[Groq Service Warning for model {model_name}]: {str(e)}")
+            last_error = e
+
+    if last_error:
+        raise last_error
+    raise RuntimeError("Groq Cloud AI service returned empty response.")
 
 async def generate_magic_notes(raw_content: str, user_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
