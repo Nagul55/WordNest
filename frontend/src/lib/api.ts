@@ -212,7 +212,8 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
       const user_context = explicitUserContext || getStoredUserContext();
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
+      // Call the Next.js Serverless Function instead of external backend
+      const res = await fetch(`/api/ai/definition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ word: cleanWord, user_context }),
