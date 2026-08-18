@@ -234,10 +234,15 @@ export default function OnboardingFlow({ user, initialProfile, onComplete }: Onb
 
     } catch (err: any) {
       console.error("Failed to update profile during onboarding:", err);
-      setErrorMsg(err?.message || "Failed to save profile.");
+      setErrorMsg(err?.message || "User account not found or removed from database. Redirecting to login...");
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
       setTimeout(() => {
-        onComplete();
-      }, 1200);
+        if (typeof window !== "undefined") {
+          window.location.reload();
+        }
+      }, 1000);
     } finally {
       setIsSaving(false);
     }

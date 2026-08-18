@@ -79,38 +79,59 @@ export default function AuthPortalPage() {
 
   const checkUserProfileAndOnboarding = async (user: any) => {
     if (!user) {
+      setActiveSession(null);
       setUserProfile(null);
       setNeedsOnboarding(false);
       return;
     }
+
+    const forceSignOut = async (message: string) => {
+      console.warn(message);
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
+      if (typeof window !== "undefined") {
+        try {
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith("wordnest_") || key.startsWith("sb-")) {
+              localStorage.removeItem(key);
+            }
+          });
+          Object.keys(sessionStorage).forEach(key => {
+            if (key.startsWith("wordnest_") || key.startsWith("sb-")) {
+              sessionStorage.removeItem(key);
+            }
+          });
+        } catch (err) {}
+      }
+      setActiveSession(null);
+      setUserProfile(null);
+      setNeedsOnboarding(false);
+      setErrorMsg(message);
+    };
+
     try {
-      // 1. Verify with Supabase Auth server whether user still exists in database
+      // 1. Verify with Supabase Auth server whether user still exists in auth database
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData?.user) {
-        console.warn("User account removed from database. Redirecting to login page...", authError?.message);
-        await supabase.auth.signOut();
-        setActiveSession(null);
-        setUserProfile(null);
-        setNeedsOnboarding(false);
-        setErrorMsg("Your account was removed or deleted from the database. Redirecting to login page...");
+        await forceSignOut("Your user account was removed or deleted from the database. Redirecting to login page...");
         return;
       }
 
       const validUser = authData.user;
 
+      // 2. Ensure profile exists / sync
       await syncUserProfile(validUser);
+
+      // 3. Query profiles table
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", validUser.id)
         .maybeSingle();
 
-      if (profileError && profileError.message?.toLowerCase().includes("not found")) {
-        await supabase.auth.signOut();
-        setActiveSession(null);
-        setUserProfile(null);
-        setNeedsOnboarding(false);
-        setErrorMsg("Account profile deleted. Redirecting to login page...");
+      if (profileError) {
+        await forceSignOut("Database profile error. Redirecting to login page...");
         return;
       }
 
@@ -122,19 +143,12 @@ export default function AuthPortalPage() {
           setNeedsOnboarding(false);
         }
       } else {
-        setNeedsOnboarding(true);
+        // User record was deleted from profiles table in database!
+        await forceSignOut("Your user profile was removed from the database. Redirecting to login page...");
       }
     } catch (e: any) {
-      console.warn("Notice: Error checking user profile onboarding state:", e);
-      if (e?.message?.toLowerCase().includes("not found") || e?.message?.toLowerCase().includes("jwt")) {
-        await supabase.auth.signOut();
-        setActiveSession(null);
-        setUserProfile(null);
-        setNeedsOnboarding(false);
-        setErrorMsg("Your account was removed from the database. Redirecting to login page...");
-      } else {
-        setNeedsOnboarding(false);
-      }
+      console.warn("Notice: Exception checking user profile onboarding state:", e);
+      await forceSignOut("Your account was removed from the database. Redirecting to login page...");
     }
   };
 
