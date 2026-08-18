@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   occupation TEXT,
   referral_source TEXT,
   onboarding_completed BOOLEAN DEFAULT FALSE,
+  has_completed_tour BOOLEAN DEFAULT FALSE,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

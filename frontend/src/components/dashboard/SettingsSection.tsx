@@ -986,6 +986,27 @@ export default function SettingsSection({
               </div>
             </div>
 
+            {/* Guided App Tour Card */}
+            <div className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 p-6 sm:p-8 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-[#0D0D0D] flex items-center gap-2">
+                  <Compass className="w-5 h-5 text-[#5227FF]" />
+                  <span>Guided App Tour</span>
+                </h3>
+                <p className="text-xs text-[#736A86] font-semibold leading-relaxed">
+                  Re-run the interactive step-by-step tour to practice creating study decks, adding vocabulary terms, and navigating WordNest modules.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("wordnest-start-tour"))}
+                className="px-5 py-2.5 rounded-full bg-[#5227FF] hover:bg-[#433075] text-white text-xs font-black shadow-md transition-all active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Compass className="w-4 h-4" />
+                <span>Restart Guided Tour</span>
+              </button>
+            </div>
+
             {/* General settings Card */}
             <form onSubmit={handleSaveProfile} className="rounded-[2rem] bg-white/70 backdrop-blur-xl border border-[#C8CED6]/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-[#A58CF4]/40 transition-all duration-300 overflow-hidden relative z-10">
               <div className="p-6 sm:p-8 space-y-6">

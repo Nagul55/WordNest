@@ -250,7 +250,7 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
     if (!isOpen || showPrompt || isCompleted) return;
 
     const handleDocumentClick = (e: MouseEvent) => {
-      // Allow clicks in the tour overlay itself
+      // 1. Allow clicks in the tour overlay card itself
       const tourOverlay = document.getElementById("tour-overlay-card");
       if (tourOverlay && (tourOverlay.contains(e.target as Node) || e.target === tourOverlay)) {
         return;
@@ -272,20 +272,37 @@ export default function AppTour({ isOpen, onClose, onNavigateTab, userName }: Ap
         Boolean(document.getElementById("tour-word-term-input")?.contains(e.target as Node)) || e.target === document.getElementById("tour-word-term-input")
       );
 
+      // 2. Modal interactions for Step 4 & Step 6: allow typing, textarea inputs, and AI buttons inside active modals
+      const createDeckModal = document.getElementById("tour-create-deck-modal");
+      const addWordModal = document.getElementById("tour-add-word-modal");
+      const isInsideCreateDeckModal = stepIndex === 4 && createDeckModal && (createDeckModal.contains(e.target as Node) || e.target === createDeckModal);
+      const isInsideAddWordModal = stepIndex === 6 && addWordModal && (addWordModal.contains(e.target as Node) || e.target === addWordModal);
+
       if (stepIndex === 9) {
         return;
       }
 
+      // If target element is not present in DOM yet, do not block window clicks
+      if (!targetEl && !submitEl && !isInsideCreateDeckModal && !isInsideAddWordModal) {
+        return;
+      }
+
+      if (isInsideCreateDeckModal && !isSubmitClick) {
+        return;
+      }
+
+      if (isInsideAddWordModal && !isSubmitClick) {
+        return;
+      }
+
       if (!isTargetClick && !isSubmitClick && !isWordInputClick) {
-        // Block clicks outside target
+        // Block clicks outside current step target element
         e.stopPropagation();
         e.preventDefault();
         return;
       }
 
-      // Special cases:
-      // 1. For Step 4, clicking input allows typing without auto-advancing.
-      // 2. For Step 6, clicking opening button or input field allows modal open/typing without completing tour.
+      // Allow typing without auto-advancing on input click
       if ((stepIndex === 4 || (stepIndex === 6 && (isTargetClick || isWordInputClick))) && !isSubmitClick) {
         return;
       }

@@ -169,15 +169,44 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   const [showTour, setShowTour] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
-  // Check if user just completed onboarding flow to trigger Guided App Tour
+  // Check if user is a new signed in user who hasn't completed guided tour
   useEffect(() => {
-    if (user?.id && typeof window !== "undefined") {
-      const tourFlag = sessionStorage.getItem(`wordnest_show_tour_${user.id}`);
-      if (tourFlag === "true") {
+    if (!user?.id || typeof window === "undefined") return;
+
+    const checkTourState = async () => {
+      const tourSessionFlag = sessionStorage.getItem(`wordnest_show_tour_${user.id}`);
+      const localCompleted = localStorage.getItem(`wordnest_tour_completed_${user.id}`);
+
+      if (tourSessionFlag === "true") {
         setShowTour(true);
         sessionStorage.removeItem(`wordnest_show_tour_${user.id}`);
+        return;
       }
-    }
+
+      if (localCompleted === "true") {
+        return;
+      }
+
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed, has_completed_tour")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile) {
+          if (profile.has_completed_tour) {
+            localStorage.setItem(`wordnest_tour_completed_${user.id}`, "true");
+          } else if (profile.onboarding_completed) {
+            setShowTour(true);
+          }
+        }
+      } catch (err) {
+        console.warn("Notice: Tour profile state query bypass:", err);
+      }
+    };
+
+    checkTourState();
 
     const handleStartTourEvent = () => {
       setShowTour(true);
@@ -185,6 +214,22 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
 
     window.addEventListener("wordnest-start-tour", handleStartTourEvent);
     return () => window.removeEventListener("wordnest-start-tour", handleStartTourEvent);
+  }, [user?.id]);
+
+  const handleCloseTour = React.useCallback(async () => {
+    setShowTour(false);
+    if (user?.id) {
+      try {
+        localStorage.setItem(`wordnest_tour_completed_${user.id}`, "true");
+        sessionStorage.removeItem(`wordnest_show_tour_${user.id}`);
+        await supabase
+          .from("profiles")
+          .update({ has_completed_tour: true, updated_at: new Date().toISOString() })
+          .eq("id", user.id);
+      } catch (e) {
+        console.warn("Notice: Tour completion persistence error:", e);
+      }
+    }
   }, [user?.id]);
 
   // Global Staggered Prefetching States
@@ -196,6 +241,14 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   const prefetchAllData = React.useCallback(async () => {
     if (!user?.id) return;
     try {
+      // Verify user existence in auth database
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
+        console.warn("Notice: Active user deleted from database. Redirecting to login page...");
+        onSignOut();
+        return;
+      }
+
       const [decksRes, sessionsRes, vocabRes, flashcardsRes] = await Promise.all([
         supabase.from("study_sets").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
         supabase.from("practice_sessions").select("*").eq("user_id", user.id),
@@ -207,10 +260,13 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
       setPrefetchedSessions(sessionsRes.data || []);
       setPrefetchedVocab(vocabRes.data || []);
       setPrefetchedFlashcards(flashcardsRes.data || []);
-    } catch (e) {
+    } catch (e: any) {
       console.warn("Notice: Staggered prefetch failed to load database records", e);
+      if (e?.message?.toLowerCase().includes("user not found") || e?.message?.toLowerCase().includes("jwt")) {
+        onSignOut();
+      }
     }
-  }, [user?.id]);
+  }, [user?.id, onSignOut]);
 
   useEffect(() => {
     prefetchAllData();
@@ -683,7 +739,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
       {/* Guided App Tour Modal & Floating Tour overlay */}
       <AppTour
         isOpen={showTour}
-        onClose={() => setShowTour(false)}
+        onClose={handleCloseTour}
         onNavigateTab={(tab) => handleTabChange(tab)}
         userName={displayUserName}
       />

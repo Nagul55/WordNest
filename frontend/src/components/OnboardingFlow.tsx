@@ -201,6 +201,7 @@ export default function OnboardingFlow({ user, initialProfile, onComplete }: Onb
         occupation: finalOccupation,
         referral_source: finalReferral,
         onboarding_completed: true,
+        has_completed_tour: false,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
 
@@ -217,8 +218,10 @@ export default function OnboardingFlow({ user, initialProfile, onComplete }: Onb
           age: age.trim(),
           occupation: finalOccupation,
           referral_source: finalReferral,
-          onboarding_completed: true
+          onboarding_completed: true,
+          has_completed_tour: false
         }));
+        localStorage.removeItem(`wordnest_tour_completed_${user.id}`);
         sessionStorage.setItem(`wordnest_show_tour_${user.id}`, "true");
       } catch (e) {
         console.warn("Failed to set local profile cache:", e);

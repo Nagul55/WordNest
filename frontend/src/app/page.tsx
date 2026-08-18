@@ -84,12 +84,35 @@ export default function AuthPortalPage() {
       return;
     }
     try {
-      await syncUserProfile(user);
-      const { data: profile } = await supabase
+      // 1. Verify with Supabase Auth server whether user still exists in database
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
+        console.warn("User account removed from database. Redirecting to login page...", authError?.message);
+        await supabase.auth.signOut();
+        setActiveSession(null);
+        setUserProfile(null);
+        setNeedsOnboarding(false);
+        setErrorMsg("Your account was removed or deleted from the database. Redirecting to login page...");
+        return;
+      }
+
+      const validUser = authData.user;
+
+      await syncUserProfile(validUser);
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", validUser.id)
         .maybeSingle();
+
+      if (profileError && profileError.message?.toLowerCase().includes("not found")) {
+        await supabase.auth.signOut();
+        setActiveSession(null);
+        setUserProfile(null);
+        setNeedsOnboarding(false);
+        setErrorMsg("Account profile deleted. Redirecting to login page...");
+        return;
+      }
 
       if (profile) {
         setUserProfile(profile);
@@ -101,9 +124,17 @@ export default function AuthPortalPage() {
       } else {
         setNeedsOnboarding(true);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn("Notice: Error checking user profile onboarding state:", e);
-      setNeedsOnboarding(false);
+      if (e?.message?.toLowerCase().includes("not found") || e?.message?.toLowerCase().includes("jwt")) {
+        await supabase.auth.signOut();
+        setActiveSession(null);
+        setUserProfile(null);
+        setNeedsOnboarding(false);
+        setErrorMsg("Your account was removed from the database. Redirecting to login page...");
+      } else {
+        setNeedsOnboarding(false);
+      }
     }
   };
 

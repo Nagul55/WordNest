@@ -17,13 +17,14 @@ try:
     conn = psycopg2.connect(conn_string, connect_timeout=10)
     cursor = conn.cursor()
     
-    print("Adding onboarding columns to public.profiles...")
+    print("Adding onboarding and tour columns to public.profiles...")
     cursor.execute("""
         ALTER TABLE public.profiles 
         ADD COLUMN IF NOT EXISTS age TEXT,
         ADD COLUMN IF NOT EXISTS occupation TEXT,
         ADD COLUMN IF NOT EXISTS referral_source TEXT,
-        ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+        ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS has_completed_tour BOOLEAN DEFAULT FALSE;
     """)
     conn.commit()
     print("Schema update successful!")
