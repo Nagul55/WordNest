@@ -207,6 +207,7 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
   };
 
   // 2. Groq AI Backend API
+  // 2. Groq AI Backend API
   const fetchGroqAi = async (): Promise<string | null> => {
     try {
       const user_context = explicitUserContext || getStoredUserContext();
@@ -225,8 +226,13 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
         if (data?.definition && data.definition.trim().length > 0) {
           return data.definition.trim();
         }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.warn(`[WordNest AI Definition API Error HTTP ${res.status}]:`, errData.error || "Ensure GROQ_API_KEY is configured in .env.local and Vercel.");
       }
-    } catch (e) {}
+    } catch (e: any) {
+      console.warn("[WordNest AI Definition Fetch Error]:", e?.message || e);
+    }
     return null;
   };
 
@@ -273,7 +279,9 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
     return dataMuseResult;
   }
 
-  return `A vocabulary term referring to ${cleanWord.toLowerCase()}.`;
+  // Clean fallback sentence if AI and external dictionaries are offline
+  const wordCap = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1);
+  return `${wordCap} is a concept or term used to describe a specific place, action, or object.`;
 };
 
 export const fetchWordExample = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
