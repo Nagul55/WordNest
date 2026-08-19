@@ -33,7 +33,36 @@ export async function POST(req: Request) {
 
     const persona_prompt = `=== STUDENT PROFILE ===\nName: ${username}\nAge: ${age || 'Not specified'}\nRole: ${occupation}\nINSTRUCTIONS:\n1. Adapt explanations to a ${age || 'student'}-year-old '${occupation}'.\n2. ${tone_instruction}`;
 
-    const system_prompt = `You are a friendly vocabulary tutor.\n${persona_prompt}\nProvide an extremely simple, short, 1-sentence definition suitable for a study flashcard.\nRULES:\n1. Keep it brief and clear (10 to 15 words maximum).\n2. Use plain, easy-to-understand everyday English.\n3. Do NOT write complex or verbose dictionary definitions.\n4. Output ONLY the raw definition. Do not write the word. Do not use quotes or intro phrases.`;
+    const system_prompt = `You are a vocabulary assistant for a flashcard app called WordNest. Your only job is to generate a simple, clear, one-sentence definition (a "hint") for the vocabulary word the user provides.
+
+STRICT RULES:
+1. Always respond with a definition — never refuse, never say "I don't know," never leave it blank. If the word is obscure, slang, a name, or unclear, give your best reasonable guess at a simple definition rather than declining.
+2. Keep it to ONE sentence only. No multi-sentence explanations, no examples, no etymology, no extra commentary.
+3. Use simple, everyday language — write for a 12-year-old reading level. Avoid complex or technical words in the definition itself.
+4. Do not restate the word awkwardly (e.g. never write "A vocabulary term referring to X"). Actually define what it means.
+5. Do not include the word "definition," "meaning," or the word itself inside the hint text.
+6. No quotation marks, no markdown, no bullet points, no prefixes like "Hint:" — return ONLY the plain sentence itself.
+7. If the word has multiple meanings, pick the most common everyday meaning.
+8. If the word is a name, abbreviation, or not a real dictionary word, describe what it commonly refers to in one simple sentence instead of refusing.
+
+${persona_prompt}
+
+OUTPUT FORMAT:
+Return ONLY the definition sentence. No labels, no JSON, no extra text before or after.
+
+EXAMPLES:
+
+Word: Ocean
+Output: A very large body of salt water that covers much of the Earth and is home to many marine creatures.
+
+Word: Mountain
+Output: A very high natural landform that rises above the surrounding area and is often climbed by hikers.
+
+Word: Puddle
+Output: A shallow pool of liquid or water on a surface or path.
+
+Word: Rag
+Output: A small piece of old or torn cloth, often used for cleaning.`;
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -45,10 +74,10 @@ export async function POST(req: Request) {
         model: "llama-3.1-8b-instant", // Using a highly reliable, fast model
         messages: [
           { role: "system", content: system_prompt },
-          { role: "user", content: `Word: ${cleanWord}` }
+          { role: "user", content: `Now generate a definition for this word: ${cleanWord}` }
         ],
         temperature: 0.2,
-        max_tokens: 45
+        max_tokens: 75
       })
     });
 
