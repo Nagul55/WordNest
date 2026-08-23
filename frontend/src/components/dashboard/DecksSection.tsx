@@ -484,6 +484,9 @@ export default function DecksSection({
       setUnsplashImages([]);
       setImageSelectorOpen(false);
       window.location.hash = `deck-${selectedDeckId}`;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+      }
       setIsSubmitting(false);
     }
   };
@@ -505,6 +508,9 @@ export default function DecksSection({
         .from("flashcards")
         .delete()
         .eq("id", wordId);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+      }
     } catch (err: any) {
       console.warn("Notice: Deleted term locally due to network sync exception:", err);
     }
@@ -544,6 +550,9 @@ export default function DecksSection({
       (window as any).wordnestNotify?.("Deck Updated", `Deck details updated successfully.`, "success");
       setIsEditDeckOpen(false);
       setEditingDeck(null);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+      }
     } catch (err) {
       console.warn("Failed to edit deck:", err);
     } finally {
@@ -603,6 +612,9 @@ export default function DecksSection({
       (window as any).wordnestNotify?.("Word Updated", `Word details updated successfully.`, "success");
       setIsEditWordOpen(false);
       setEditingWord(null);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+      }
     } catch (err) {
       console.warn("Failed to edit word:", err);
     } finally {

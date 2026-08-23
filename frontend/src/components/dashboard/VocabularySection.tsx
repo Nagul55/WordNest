@@ -132,6 +132,9 @@ export default function VocabularySection() {
         .from("vocabulary_vault")
         .update({ status: nextStatus, updated_at: new Date().toISOString() })
         .eq("id", id);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+      }
     } catch (err) {
       console.error("Error updating status:", err);
     }
@@ -178,6 +181,9 @@ export default function VocabularySection() {
         setIsAddModalOpen(false);
         setNewWord({ word: "", phonetic: "", partOfSpeech: "adjective", definition: "", example: "", category: "Essential" });
         (window as any).wordnestNotify?.("Word Added", `"${item.word}" has been added to your Lexicon Vault.`, "success");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("wordnest-data-changed"));
+        }
       }
     } catch (err) {
       console.error("Error adding word:", err);
