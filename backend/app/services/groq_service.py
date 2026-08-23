@@ -39,9 +39,7 @@ def build_user_persona_prompt(user_context: Optional[Dict[str, Any]] = None) -> 
         else:
             tone_instruction = "Use professional, efficient, domain-relevant terminology tailored for adult professionals and domain experts."
     
-    pronoun_instruction = ""
-    if "nagul" in username.lower():
-        pronoun_instruction = "\n3. Note: The student 'Nagul' is male. Always use male pronouns (he/him/his) when referring to him."
+    pronoun_instruction = "\n3. Analyze the student's name to determine if it is typically male, female, or gender-neutral. Refer to the student in any third-person context using correct, gender-appropriate pronouns (e.g. he/him/his for male names like Nagul, she/her/hers for female names like Sarah, or they/them/theirs/address directly if ambiguous)."
 
     return f"""
 === STUDENT PROFILE & ADAPTIVE LEARNING PERSONA ===

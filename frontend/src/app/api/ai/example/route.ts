@@ -32,10 +32,7 @@ export async function POST(req: Request) {
       else tone_instruction = "Use professional, efficient, domain-relevant terminology tailored for adult professionals and domain experts.";
     }
 
-    let pronoun_guidance = "";
-    if (username.toLowerCase().includes("nagul")) {
-      pronoun_guidance = "\n3. Note: The student 'Nagul' is male. Always use male pronouns (he/him/his) when referring to him.";
-    }
+    let pronoun_guidance = "\n3. Analyze the student's name to determine if it is typically male, female, or gender-neutral. Refer to the student in any third-person context using correct, gender-appropriate pronouns (e.g. he/him/his for male names like Nagul, she/her/hers for female names like Sarah, or they/them/theirs/address directly if ambiguous).";
 
     const persona_prompt = `=== STUDENT PROFILE ===\nName: ${username}\nAge: ${age || 'Not specified'}\nRole: ${occupation}\nINSTRUCTIONS:\n1. Adapt explanations to a ${age || 'student'}-year-old '${occupation}'.\n2. ${tone_instruction}${pronoun_guidance}`;
 
