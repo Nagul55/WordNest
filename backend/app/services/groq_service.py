@@ -164,7 +164,7 @@ SCORING RULES (Score out of 100):
 
 FEEDBACK FORMATTING INSTRUCTIONS:
 1. "feedback": Highlight specific grammatical or syntax issues in 1-2 direct sentences. If score < 90, begin with: "Not quite {student_name}." or "You tried well {student_name}!" followed by explicitly stating what phrase or repeated word is incorrect (e.g. "The sentence has a repeated 'over' and the phrase 'that are in the shoulder' is incorrect.").
-2. "natural_correction": Provide the primary, natural corrected version of the user's sentence (e.g. "The children jumped over the puddles that were on the shoulder of the road.").
+2. "natural_correction": Provide the primary, natural corrected version of the user's sentence. CRITICAL: If the score is less than 90, you MUST apply grammatical and syntactic corrections to their sentence. Do NOT return the exact same sentence they typed if it contains mistakes or awkward phrasing (e.g., if they write "I travelled on Tuk Tuk to reach the house.", you must correct it to "I travelled on a Tuk Tuk to reach the house.").
 3. "alternative_correction": Provide an alternative natural variation if applicable (e.g. "The children jumped over the puddle that was on the shoulder of the road.").
 4. "alternative_label": Provide the label for the alternative (e.g. "Or, if you mean one puddle:").
 

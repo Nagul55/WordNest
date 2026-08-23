@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { getStoredUserContext } from "@/lib/api";
+import { getStoredUserContext, fetchWordExample } from "@/lib/api";
 import { 
   Layers, 
   RotateCw, 
@@ -1560,15 +1560,10 @@ function QuizChallengeModule({
       setIsGeneratingExample(true);
       let isMounted = true;
 
-      fetch(`${API_BASE_URL}/api/ai/example`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word: currentWord.word })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (isMounted && data.status === "success" && data.example) {
-            setAiExample(data.example);
+      fetchWordExample(currentWord.word)
+        .then(example => {
+          if (isMounted && example) {
+            setAiExample(example);
           }
         })
         .catch(err => {
