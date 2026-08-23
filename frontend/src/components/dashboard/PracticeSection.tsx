@@ -1972,7 +1972,7 @@ function AISentenceEvaluatorModule({
     setEvaluationResult(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ai/grade`, {
+      const res = await fetch(`/api/ai/grade`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

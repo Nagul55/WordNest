@@ -305,7 +305,7 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
 export const fetchWordExample = async (word: string, explicitUserContext?: UserContext): Promise<string> => {
   const user_context = explicitUserContext || getStoredUserContext();
   try {
-    const res = await fetch(`${API_BASE_URL}/api/ai/example`, {
+    const res = await fetch(`/api/ai/example`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ word, user_context })
