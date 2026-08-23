@@ -36,41 +36,33 @@ export async function POST(req: Request) {
 
     const persona_prompt = `=== STUDENT PROFILE ===\nName: ${username}\nAge: ${age || 'Not specified'}\nRole: ${occupation}\nINSTRUCTIONS:\n1. Adapt explanations to a ${age || 'student'}-year-old '${occupation}'.\n2. ${tone_instruction}`;
 
-    const system_prompt = `You are a vocabulary assistant for a flashcard app called WordNest. Your only job is to generate a simple, clear, one-sentence definition (a "hint") for the vocabulary word the user provides.
+    const system_prompt = `You are an expert vocabulary assistant for a flashcard app. Your only job is to generate a simple, clear, one-sentence definition for the vocabulary term the user provides. 
 
-STRICT RULES:
-1. Always respond with a definition — never refuse, never say "I don't know," never leave it blank. If the word is obscure, slang, a name, or unclear, give your best reasonable guess at a simple definition rather than declining.
-2. Keep it to ONE sentence only. No multi-sentence explanations, no examples, no etymology, no extra commentary.
-3. Use simple, everyday language — write for a 12-year-old reading level. Avoid complex or technical words in the definition itself.
-4. Do not restate the word awkwardly (e.g. never write "A vocabulary term referring to X"). Actually define what it means.
-5. Do not include the word "definition," "meaning," or the word itself inside the hint text.
-6. No quotation marks, no markdown, no bullet points, no prefixes like "Hint:" — return ONLY the plain sentence itself.
-7. If the word has multiple meanings, pick the most common everyday meaning.
-8. If the word is a name, abbreviation, or not a real dictionary word, describe what it commonly refers to in one simple sentence instead of refusing.
+CRITICAL RULES:
+1. YOU MUST ACTUALLY DEFINE THE TERM. NEVER give a generic fallback like "[Term] is a concept or term used to describe...". That is strictly forbidden.
+2. If the user provides a compound word or phrase (e.g. "hard helmet", "departure platform"), define the actual object or concept directly (e.g. "A tough protective hat worn by construction workers" or "The designated area at a station where passengers wait to board a train").
+3. Keep it to exactly ONE sentence. No examples, no extra commentary.
+4. Use simple, everyday language suitable for a 12-year-old.
+5. NEVER include the word itself in the definition, and NEVER use phrases like "A term referring to" or "A concept used to describe". Just state what the thing is.
+6. No quotation marks, no markdown, no prefixes like "Hint:" — return ONLY the plain text sentence.
 
 ${persona_prompt}
 
-OUTPUT FORMAT:
-Return ONLY the definition sentence. No labels, no JSON, no extra text before or after.
-
 EXAMPLES:
 
+Word: Hard helmet
+Output: A tough, protective hat worn to prevent head injuries in dangerous areas like construction sites.
+
+Word: Departure platform
+Output: A designated area at a train or bus station where passengers wait to board their ride.
+
 Word: Ocean
-Output: A very large body of salt water that covers much of the Earth and is home to many marine creatures.
-
-Word: Mountain
-Output: A very high natural landform that rises above the surrounding area and is often climbed by hikers.
-
-Word: Puddle
-Output: A shallow pool of liquid or water on a surface or path.
-
-Word: Rag
-Output: A small piece of old or torn cloth, often used for cleaning.`;
+Output: A very large body of salt water that covers much of the Earth.`;
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: "system", content: system_prompt },
-        { role: "user", content: `Now generate a definition for this word: ${cleanWord}` }
+        { role: "user", content: `Generate the definition for: ${cleanWord}` }
       ],
       model: "llama-3.1-8b-instant",
       temperature: 0.2,
