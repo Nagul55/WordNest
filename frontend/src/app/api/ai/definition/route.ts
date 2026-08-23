@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import Groq from 'groq-sdk';
 
 export async function POST(req: Request) {
   try {
@@ -16,6 +17,8 @@ export async function POST(req: Request) {
       console.error("No GROQ_API_KEY found in Next.js environment!");
       return NextResponse.json({ error: "AI service is not configured on this environment." }, { status: 500 });
     }
+
+    const groq = new Groq({ apiKey });
 
     // Build persona
     const username = user_context?.username || "Student";
@@ -64,36 +67,22 @@ Output: A shallow pool of liquid or water on a surface or path.
 Word: Rag
 Output: A small piece of old or torn cloth, often used for cleaning.`;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant", // Using a highly reliable, fast model
-        messages: [
-          { role: "system", content: system_prompt },
-          { role: "user", content: `Now generate a definition for this word: ${cleanWord}` }
-        ],
-        temperature: 0.2,
-        max_tokens: 75
-      })
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: "system", content: system_prompt },
+        { role: "user", content: `Now generate a definition for this word: ${cleanWord}` }
+      ],
+      model: "llama-3.1-8b-instant",
+      temperature: 0.2,
+      max_tokens: 75
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Groq Cloud API Error:", errText);
-      return NextResponse.json({ error: "Failed to generate definition from AI." }, { status: 500 });
-    }
-
-    const data = await response.json();
-    let definition = data.choices?.[0]?.message?.content || "";
+    let definition = chatCompletion.choices?.[0]?.message?.content || "";
     definition = definition.trim().replace(/^['"]|['"]$/g, '').replace(/^-/, '').trim();
 
     return NextResponse.json({ definition });
   } catch (error: any) {
     console.error("Next.js AI Route Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || "An unexpected error occurred" }, { status: 500 });
   }
 }
