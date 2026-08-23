@@ -207,13 +207,12 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
   };
 
   // 2. Groq AI Backend API
-  // 2. Groq AI Backend API
   const fetchGroqAi = async (): Promise<string | null> => {
+    // 2a. Try Next.js Serverless Route first
     try {
       const user_context = explicitUserContext || getStoredUserContext();
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5000);
-      // Call the Next.js Serverless Function instead of external backend
       const res = await fetch(`/api/ai/definition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -226,12 +225,31 @@ export const fetchWordDefinition = async (word: string, explicitUserContext?: Us
         if (data?.definition && data.definition.trim().length > 0) {
           return data.definition.trim();
         }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        console.warn(`[WordNest AI Definition API Error HTTP ${res.status}]:`, errData.error || "Ensure GROQ_API_KEY is configured in .env.local and Vercel.");
       }
     } catch (e: any) {
-      console.warn("[WordNest AI Definition Fetch Error]:", e?.message || e);
+      console.warn("[Next.js AI Definition Fetch Error]:", e?.message || e);
+    }
+
+    // 2b. Fallback to FastAPI Backend (which might have GROQ_API_KEY configured)
+    try {
+      const user_context = explicitUserContext || getStoredUserContext();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`${API_BASE_URL}/api/ai/definition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: cleanWord, user_context }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.definition && data.definition.trim().length > 0) {
+          return data.definition.trim();
+        }
+      }
+    } catch (e: any) {
+      console.warn("[FastAPI AI Definition Fetch Error]:", e?.message || e);
     }
     return null;
   };
