@@ -39,6 +39,10 @@ def build_user_persona_prompt(user_context: Optional[Dict[str, Any]] = None) -> 
         else:
             tone_instruction = "Use professional, efficient, domain-relevant terminology tailored for adult professionals and domain experts."
     
+    pronoun_instruction = ""
+    if "nagul" in username.lower():
+        pronoun_instruction = "\n3. Note: The student 'Nagul' is male. Always use male pronouns (he/him/his) when referring to him."
+
     return f"""
 === STUDENT PROFILE & ADAPTIVE LEARNING PERSONA ===
 - Student Name / Username: {username}
@@ -48,7 +52,7 @@ def build_user_persona_prompt(user_context: Optional[Dict[str, Any]] = None) -> 
 INSTRUCTIONS FOR AI RESPONSE ADAPTATION:
 1. Always address the student naturally as '{username}'.
 2. Adapt all explanations, vocabulary level, question difficulty, and analogies specifically to a {age if age else 'student'}-year-old working/studying as a '{occupation}'.
-3. {tone_instruction}
+3. {tone_instruction}{pronoun_instruction}
 ===================================================
 """
 

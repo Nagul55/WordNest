@@ -32,7 +32,12 @@ export async function POST(req: Request) {
       else tone_instruction = "Use professional, efficient, domain-relevant terminology tailored for adult professionals and domain experts.";
     }
 
-    const persona_prompt = `=== STUDENT PROFILE ===\nName: ${student_name}\nAge: ${age || 'Not specified'}\nRole: ${occupation}\nINSTRUCTIONS:\n1. Adapt feedback to a ${age || 'student'}-year-old '${occupation}'.\n2. ${tone_instruction}`;
+    let pronoun_guidance = "";
+    if (student_name.toLowerCase().includes("nagul")) {
+      pronoun_guidance = "\n3. Note: The student 'Nagul' is male. Always use male pronouns (he/him/his) when referring to him.";
+    }
+
+    const persona_prompt = `=== STUDENT PROFILE ===\nName: ${student_name}\nAge: ${age || 'Not specified'}\nRole: ${occupation}\nINSTRUCTIONS:\n1. Adapt feedback to a ${age || 'student'}-year-old '${occupation}'.\n2. ${tone_instruction}${pronoun_guidance}`;
 
     const system_prompt = `You are WordNest's encouraging academic sentence evaluator.
 ${persona_prompt}
