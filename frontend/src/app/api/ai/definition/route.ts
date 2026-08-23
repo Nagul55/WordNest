@@ -64,7 +64,7 @@ Output: A very large body of salt water that covers much of the Earth.`;
         { role: "system", content: system_prompt },
         { role: "user", content: `Generate the definition for: ${cleanWord}` }
       ],
-      model: "llama-3.1-8b-instant",
+      model: "groq/compound",
       temperature: 0.2,
       max_tokens: 75
     });
